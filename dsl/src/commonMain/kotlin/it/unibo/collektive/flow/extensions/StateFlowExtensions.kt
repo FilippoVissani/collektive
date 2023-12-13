@@ -48,7 +48,7 @@ inline fun <reified T, R> mapStates(
 ) = combineStates(flow) { (t) -> transform(t) }
 
 /**
- * Variant of [combineState] for combining 2 state flows.
+ * Variant of [combineStates] for combining 2 state flows.
  */
 inline fun <reified T1, reified T2, R> combineStates(
     flow1: StateFlow<T1>,
