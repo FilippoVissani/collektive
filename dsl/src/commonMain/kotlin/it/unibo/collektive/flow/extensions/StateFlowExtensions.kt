@@ -62,7 +62,7 @@ inline fun <reified T1, reified T2, R> combineStates(
 }
 
 /**
- * Variant of [combineState] for combining 3 state flows.
+ * Variant of [combineStates] for combining 3 state flows.
  */
 inline fun <reified T1, reified T2, reified T3, R> combineStates(
     flow1: StateFlow<T1>,
