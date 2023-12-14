@@ -14,6 +14,8 @@ import it.unibo.collektive.stack.Path
 import it.unibo.collektive.stack.Stack
 import it.unibo.collektive.state.State
 import it.unibo.collektive.state.getTyped
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 
 /**
  * Context for managing aggregate computation.
@@ -27,7 +29,7 @@ class AggregateContext(
 ) {
 
     private val stack = Stack<Any>()
-    private var state: State = mapOf()
+    private val state: MutableStateFlow<State> = MutableStateFlow(emptyMap())
     private var toBeSent = OutboundMessage(localId, emptyMap())
 
     /**
@@ -38,7 +40,7 @@ class AggregateContext(
     /**
      * Return the current state of the device as a new state.
      */
-    fun newState(): State = state
+    fun newState(): State = state.value
 
     private fun <T> newField(localValue: T, others: Map<ID, T>): Field<T> = Field(localId, localValue, others)
 
@@ -60,8 +62,8 @@ class AggregateContext(
      * The result of the exchange function is a field with as messages a map with key the id of devices across the
      * network and the result of the computation passed as relative local values.
      */
-    fun <X> exchange(initial: X, body: (Field<X>) -> Field<X>): Field<X> {
-        val messages = messagesAt<X>(stack.currentPath())
+    fun <T> exchange(initial: T, body: (Field<T>) -> Field<T>): Field<T> {
+        val messages = messagesAt<T>(stack.currentPath())
         val previous = stateAt(stack.currentPath(), initial)
         val subject = newField(previous, messages)
         return body(subject).also { field ->
@@ -72,7 +74,7 @@ class AggregateContext(
                     "The most likely cause is an aggregate function call within a loop"
             }
             toBeSent = toBeSent.copy(messages = toBeSent.messages + (stack.currentPath() to message))
-            state = state + (stack.currentPath() to field.localValue)
+            state.update { it + (stack.currentPath() to field.localValue) }
         }
     }
 
@@ -80,15 +82,15 @@ class AggregateContext(
      * Iteratively updates the value computing the [transform] expression from a [RepeatingContext]
      * at each device using the last computed value or the [initial].
      */
-    fun <Initial, Return> repeating(
-        initial: Initial,
-        transform: RepeatingContext<Initial, Return>.(Initial) -> RepeatingResult<Initial, Return>,
-    ): Return {
-        val context = RepeatingContext<Initial, Return>()
-        var res: Option<RepeatingResult<Initial, Return>>
-        transform(context, stateAt(stack.currentPath(), initial)).also {
-            res = it.some()
-            state = state + (stack.currentPath() to it.toReturn)
+    fun <T, R> repeating(
+        initial: T,
+        transform: RepeatingContext<T, R>.(T) -> RepeatingResult<T, R>,
+    ): R {
+        val context = RepeatingContext<T, R>()
+        var res: Option<RepeatingResult<T, R>>
+        transform(context, stateAt(stack.currentPath(), initial)).also { repeatingResult ->
+            res = repeatingResult.some()
+            state.update { it + (stack.currentPath() to repeatingResult.toReturn) }
         }
         return res.getOrElse { error("This error should never be thrown") }.toReturn
     }
@@ -97,10 +99,10 @@ class AggregateContext(
      * Iteratively updates the value computing the [transform] expression at each device using the last
      * computed value or the [initial].
      */
-    fun <Initial> repeat(
-        initial: Initial,
-        transform: (Initial) -> Initial,
-    ): Initial =
+    fun <T> repeat(
+        initial: T,
+        transform: (T) -> T,
+    ): T =
         repeating(initial) {
             val res = transform(it)
             RepeatingResult(res, res)
