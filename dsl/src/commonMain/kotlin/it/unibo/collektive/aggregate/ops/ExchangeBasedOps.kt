@@ -6,6 +6,11 @@ import arrow.core.none
 import arrow.core.some
 import it.unibo.collektive.aggregate.AggregateContext
 import it.unibo.collektive.field.Field
+import it.unibo.collektive.flow.extensions.combineStates
+import it.unibo.collektive.flow.extensions.mapStates
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 
 /**
  * Observes the value of an expression [type] across neighbours.
@@ -20,8 +25,8 @@ import it.unibo.collektive.field.Field
  * ```
  * In this case, the field returned has the result of the computation as local value.
  */
-fun <Return> AggregateContext.neighbouring(type: Return): Field<Return> {
-    val body: (Field<Return>) -> Field<Return> = { f -> f.mapWithId { _, x -> x } }
+suspend fun <R> AggregateContext.neighbouring(type: R): StateFlow<Field<R>> {
+    val body: (StateFlow<Field<R>>) -> StateFlow<Field<R>> = { flow -> mapStates(flow) { it.mapWithId { _, x -> x } } }
     return exchange(type, body)
 }
 
@@ -49,16 +54,18 @@ fun <Return> AggregateContext.neighbouring(type: Return): Field<Return> {
  * }
  * ```
  */
-fun <Initial, Return> AggregateContext.sharing(
-    initial: Initial,
-    transform: SharingContext<Initial, Return>.(Field<Initial>) -> SharingResult<Initial, Return>,
-): Return {
-    val context = SharingContext<Initial, Return>()
-    var res: Option<SharingResult<Initial, Return>> = none()
-    exchange(initial) {
-        it.mapWithId { _, _ -> transform(context, it).also { r -> res = r.some() }.toSend }
+suspend fun <T, R> AggregateContext.sharing(
+    initial: T,
+    transform: SharingContext<T, R>.(StateFlow<Field<T>>) -> StateFlow<SharingResult<T, R>>,
+): StateFlow<R> {
+    val context = SharingContext<T, R>()
+    val result: MutableStateFlow<Option<SharingResult<T, R>>> = MutableStateFlow(none())
+    exchange(initial) { flow ->
+        combineStates(flow, transform(context, flow)) { field, sharingResult ->
+            field.mapWithId{ _, _ -> sharingResult.also { r -> result.update { r.some() } }.toSend }
+        }
     }
-    return res.getOrElse { error("This error should never be thrown") }.toReturn
+    return mapStates(result){ it.getOrElse { error("This error should never be thrown") }.toReturn }
 }
 
 /**
@@ -73,8 +80,8 @@ fun <Initial, Return> AggregateContext.sharing(
  * ```
  * In the example above, the function [share] wil return a value that is the max found in the field.
  **/
-fun <Initial> AggregateContext.share(initial: Initial, transform: (Field<Initial>) -> Initial): Initial =
+suspend fun <T> AggregateContext.share(initial: T, transform: (StateFlow<Field<T>>) -> StateFlow<T>): StateFlow<T> =
     sharing(initial) {
-        val res = transform(it)
-        SharingResult(res, res)
+        val result = transform(it)
+        mapStates(result) { value -> SharingResult(value, value) }
     }
