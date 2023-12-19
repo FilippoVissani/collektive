@@ -6,6 +6,12 @@ import it.unibo.collektive.aggregate.api.impl.AggregateContext
 import it.unibo.collektive.networking.InboundMessage
 import it.unibo.collektive.networking.Network
 import it.unibo.collektive.state.State
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 /**
  * Create a Collektive device with a specific [localId] and a [network] to manage incoming and outgoing messages,
@@ -76,6 +82,29 @@ class Collektive<ID : Any, R>(
             AggregateResult(localId, compute(), messagesToSend(), newState()).also {
                 network.write(it.toSend)
             }
+        }
+
+        /**
+         * TODO.
+         */
+        suspend fun <R> aggregate(
+            localId: ID,
+            inbound: StateFlow<Iterable<InboundMessage>>,
+            compute: AggregateContext.() -> R,
+        ): StateFlow<AggregateResult<R>> = coroutineScope {
+            val contextFlow = MutableStateFlow(AggregateContext(localId, inbound.value, emptyMap()))
+            launch(Dispatchers.Default) {
+                inbound.collect { messages ->
+                    val previousState = contextFlow.value.newState()
+                    contextFlow.update { AggregateContext(localId, messages, previousState) }
+                }
+            }
+            val result = mapStates(contextFlow) { aggregateContext ->
+                aggregateContext.run {
+                    AggregateResult(localId, compute(), messagesToSend(), newState())
+                }
+            }
+            result
         }
     }
 }
