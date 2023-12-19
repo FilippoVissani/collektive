@@ -7,6 +7,7 @@ kotlinMultiplatform {
         val commonMain by getting {
             dependencies {
                 implementation(rootProject.libs.arrow)
+                implementation(rootProject.libs.kotlinx.coroutines)
             }
         }
         val commonTest by getting {
