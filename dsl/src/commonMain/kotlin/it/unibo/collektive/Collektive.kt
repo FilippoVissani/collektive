@@ -6,7 +6,9 @@ import it.unibo.collektive.flow.extensions.mapStates
 import it.unibo.collektive.networking.InboundMessage
 import it.unibo.collektive.networking.Network
 import it.unibo.collektive.state.State
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 
 /**
  * Create a Collektive device with a specific [id] and a [network] to manage incoming and outgoing messages,
@@ -88,8 +90,11 @@ class Collektive<R>(
             inbound: StateFlow<Iterable<InboundMessage>>,
             compute: AggregateContext.() -> R,
         ): StateFlow<AggregateResult<R>> {
+            val states = MutableStateFlow<State>(emptyMap())
             val contextFlow: StateFlow<AggregateContext> = mapStates(inbound) { messages ->
-                AggregateContext(localId, messages, emptyMap())
+                val newContext = AggregateContext(localId, messages, states.value)
+                states.update { newContext.newState() }
+                newContext
             }
             val result: StateFlow<AggregateResult<R>> = mapStates(contextFlow) { aggregateContext ->
                 aggregateContext.run {
