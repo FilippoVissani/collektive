@@ -1,4 +1,4 @@
-package it.unibo.collektive
+package it.unibo.collektive.flow.extensions
 
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
