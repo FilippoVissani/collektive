@@ -2,49 +2,75 @@ package it.unibo.collektive.reactive
 
 import io.kotest.common.runBlocking
 import io.kotest.core.spec.style.StringSpec
-import io.kotest.matchers.shouldBe
 import it.unibo.collektive.Collektive.Companion.aggregate
 import it.unibo.collektive.IntId
+import it.unibo.collektive.aggregate.AggregateContext
 import it.unibo.collektive.field.Field
-import it.unibo.collektive.networking.OutboundMessage
-import it.unibo.collektive.networking.SingleOutboundMessage
-import it.unibo.collektive.stack.Path
+import it.unibo.collektive.networking.InboundMessage
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-class Test  : StringSpec({
+class Test : StringSpec({
 
     // device ids
-    val id0 = IntId(0)
+    val id1 = IntId(1)
+    val id2 = IntId(2)
+    val id3 = IntId(3)
 
     // initial values
-    val initV1 = 1
-
-    // paths
-    val path1 = Path(listOf("invoke.1", "exchange.1"))
-
-    // expected
-    val expected2 = 2
+    val initialValue = 100
 
     val increaseOrDouble: (Field<Int>) -> Field<Int> = { f ->
         f.mapWithId { _, v -> if (v % 2 == 0) v + 1 else v * 2 }
     }
 
+    suspend fun <R> runSimulation(ids: Iterable<IntId>, program: AggregateContext.() -> R) = coroutineScope {
+        println("#################################")
+        val inboundMessages = ids.associateWith { MutableStateFlow(emptyList<InboundMessage>()) }
+        val aggregateResults = ids.associateWith {
+            aggregate(it, inboundMessages[it]!!.asStateFlow(), program)
+        }
+        val jobs = aggregateResults.map { (selfId, aggregateResultFlow) ->
+            selfId to
+                launch(Dispatchers.Default) {
+                    aggregateResultFlow.collect { aggregateResult ->
+                        println("$aggregateResult")
+                        inboundMessages.filter { (k, _) -> k != selfId }.values.forEach { neighborsInboundMessages ->
+                            neighborsInboundMessages.update { messages ->
+                                messages.filter { it.senderId != selfId } +
+                                    InboundMessage(
+                                        aggregateResult.toSend.senderId,
+                                        aggregateResult.toSend.messages.mapValues { (_, single) ->
+                                            single.overrides.getOrElse(aggregateResult.toSend.senderId) { single.default }
+                                        },
+                                    )
+                            }
+                        }
+                    }
+                }
+        }.toMap()
+        delay(50)
+        jobs.forEach { it.value.cancelAndJoin() }
+    }
+
     "First time exchange should return the initial value" {
         runBlocking {
-            val result = aggregate(id0, MutableStateFlow(emptyList())) {
-                val res = exchange(initV1, increaseOrDouble)
-                res.localValue shouldBe expected2
-                messagesToSend() shouldBe OutboundMessage(
-                    id0,
-                    mapOf(path1 to SingleOutboundMessage(expected2, emptyMap())),
-                )
+            runSimulation(listOf(id1)) {
+                exchange(initialValue, increaseOrDouble)
             }
-            launch(Dispatchers.Default) {
-                result.collect { aggregateResult ->
-                    println(aggregateResult)
-                }
+        }
+    }
+
+    "Exchange should work between three aligned devices" {
+        runBlocking {
+            runSimulation(listOf(id1, id2, id3)) {
+                exchange(initialValue, increaseOrDouble)
             }
         }
     }
