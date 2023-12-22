@@ -91,14 +91,14 @@ class Collektive<R>(
             compute: AggregateContext.() -> R,
         ): StateFlow<AggregateResult<R>> {
             val states = MutableStateFlow<State>(emptyMap())
-            val contextFlow: StateFlow<AggregateContext> = mapStates(inbound) { messages ->
-                val newContext = AggregateContext(localId, messages, states.value)
-                states.update { newContext.newState() }
-                newContext
+            val contextFlow = mapStates(inbound) {
+                AggregateContext(localId, it, states.value)
             }
             val result: StateFlow<AggregateResult<R>> = mapStates(contextFlow) { aggregateContext ->
                 aggregateContext.run {
-                    AggregateResult(localId, compute(), messagesToSend(), newState())
+                    val aggregateResult = AggregateResult(localId, compute(), messagesToSend(), newState())
+                    states.update { aggregateResult.newState }
+                    aggregateResult
                 }
             }
             return result
