@@ -113,32 +113,24 @@ class Collektive<R>(
         /**
          * TODO.
          */
-        suspend fun <R> aggregate(
+        fun <R> aggregate(
             localId: ID,
             network: ReactiveNetwork,
             compute: AggregateContext.() -> R,
-        ): StateFlow<AggregateResult<R>> = coroutineScope {
-            val contextFlow = MutableStateFlow(AggregateContext(localId, emptySet(), emptyMap()))
-
-            val job = launch(Dispatchers.Default) {
-                network.read().collect { messages ->
-                    contextFlow.update {
-                        AggregateContext(localId, messages, it.newState())
-                    }
-                }
+        ): StateFlow<AggregateResult<R>> {
+            val states = MutableStateFlow<State>(emptyMap())
+            val contextFlow = mapStates(network.read()) {
+                AggregateContext(localId, it, states.value)
             }
-
             val result: StateFlow<AggregateResult<R>> = mapStates(contextFlow) { aggregateContext ->
                 aggregateContext.run {
                     val aggregateResult = AggregateResult(localId, compute(), messagesToSend(), newState())
+                    states.update { aggregateResult.newState }
                     network.write(aggregateResult.toSend)
                     aggregateResult
                 }
             }
-
-            delay(50)
-            job.cancelAndJoin()
-            result
+            return result
         }
     }
 }
