@@ -5,10 +5,16 @@ import it.unibo.collektive.aggregate.AggregateResult
 import it.unibo.collektive.flow.extensions.mapStates
 import it.unibo.collektive.networking.InboundMessage
 import it.unibo.collektive.networking.Network
+import it.unibo.collektive.networking.ReactiveNetwork
 import it.unibo.collektive.state.State
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 /**
  * Create a Collektive device with a specific [id] and a [network] to manage incoming and outgoing messages,
@@ -102,6 +108,37 @@ class Collektive<R>(
                 }
             }
             return result
+        }
+
+        /**
+         * TODO.
+         */
+        suspend fun <R> aggregate(
+            localId: ID,
+            network: ReactiveNetwork,
+            compute: AggregateContext.() -> R,
+        ): StateFlow<AggregateResult<R>> = coroutineScope {
+            val contextFlow = MutableStateFlow(AggregateContext(localId, emptySet(), emptyMap()))
+
+            val job = launch(Dispatchers.Default) {
+                network.read().collect { messages ->
+                    contextFlow.update {
+                        AggregateContext(localId, messages, it.newState())
+                    }
+                }
+            }
+
+            val result: StateFlow<AggregateResult<R>> = mapStates(contextFlow) { aggregateContext ->
+                aggregateContext.run {
+                    val aggregateResult = AggregateResult(localId, compute(), messagesToSend(), newState())
+                    network.write(aggregateResult.toSend)
+                    aggregateResult
+                }
+            }
+
+            delay(50)
+            job.cancelAndJoin()
+            result
         }
     }
 }
