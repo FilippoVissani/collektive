@@ -3,22 +3,13 @@ package it.unibo.collektive.reactive
 import io.kotest.common.runBlocking
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
-import it.unibo.collektive.Collektive.Companion.aggregate
 import it.unibo.collektive.IntId
-import it.unibo.collektive.aggregate.AggregateContext
 import it.unibo.collektive.field.Field
-import it.unibo.collektive.network.ReactiveNetworkImplTest
-import it.unibo.collektive.network.ReactiveNetworkManager
 import it.unibo.collektive.networking.OutboundMessage
 import it.unibo.collektive.networking.SingleOutboundMessage
 import it.unibo.collektive.stack.Path
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.cancelAndJoin
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
-class Test : StringSpec({
+class ExchangeTest : StringSpec({
 
     // device ids
     val id0 = IntId(0)
@@ -41,27 +32,9 @@ class Test : StringSpec({
         f.mapWithId { _, v -> if (v % 2 == 0) v + 1 else v * 2 }
     }
 
-    suspend fun <R> runSimulation(simulation: Map<IntId, AggregateContext.() -> R>) = coroutineScope {
-        val networkManager = ReactiveNetworkManager()
-        val networks = simulation.keys.associateWith { ReactiveNetworkImplTest(networkManager, it) }
-        val aggregateResults = simulation.map { (k, v) ->
-            k to aggregate(k, networks[k]!!, v)
-        }.toMap()
-        val jobs = aggregateResults.map { (selfId, aggregateResultFlow) ->
-            selfId to
-                launch(Dispatchers.Default) {
-                    aggregateResultFlow.collect { aggregateResult ->
-                        println("$selfId -> ${aggregateResult.result}")
-                    }
-                }
-        }.toMap()
-        delay(100)
-        jobs.values.forEach { it.cancelAndJoin() }
-    }
-
     "First time exchange should return the initial value" {
         runBlocking {
-            runSimulation(
+            val simulator = MockSimulator(
                 mapOf(
                     id0 to {
                         val res = exchange(initV1, increaseOrDouble)
@@ -73,12 +46,13 @@ class Test : StringSpec({
                     },
                 )
             )
+            simulator.runSimulation()
         }
     }
 
     "Exchange should work between three aligned devices" {
         runBlocking {
-            runSimulation(
+            val simulator = MockSimulator(
                 mapOf(
                     // Device 1
                     id1 to {
@@ -94,6 +68,7 @@ class Test : StringSpec({
                     },
                 )
             )
+            simulator.runSimulation()
         }
     }
 })
