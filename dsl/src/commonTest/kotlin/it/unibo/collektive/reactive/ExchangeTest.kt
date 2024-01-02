@@ -2,10 +2,12 @@ package it.unibo.collektive.reactive
 
 import io.kotest.common.runBlocking
 import io.kotest.core.spec.style.StringSpec
+import it.unibo.collektive.Collektive.Companion.test
 import it.unibo.collektive.IntId
 import it.unibo.collektive.field.Field
-import it.unibo.collektive.reactive.Collektive.Companion.aggregate
+import it.unibo.collektive.reactive.flow.extensions.mapStates
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 class ExchangeTest : StringSpec({
@@ -16,17 +18,19 @@ class ExchangeTest : StringSpec({
     // initial values
     val initV1 = 1
 
-    val increaseOrDouble: (Field<Int>) -> Field<Int> = { field ->
-        field.mapWithId { _, v -> if (v % 2 == 0) v + 1 else v * 2 }
+    val increaseOrDouble: (StateFlow<Field<Int>>) -> StateFlow<Field<Int>> = { flow ->
+        mapStates(flow) { field ->
+            field.mapWithId { _, v -> if (v % 2 == 0) v + 1 else v * 2 }
+        }
     }
 
     "First time exchange should return the initial value" {
         runBlocking {
-            val result: AggregateExpression<Field<Int>> = aggregate(id0) {
+            val result = test(id0) {
                 exchange(initV1, increaseOrDouble)
             }
             launch(Dispatchers.Default) {
-                result.compute().collect { message ->
+                result.collect { message ->
                     println(message.messages)
                 }
             }
