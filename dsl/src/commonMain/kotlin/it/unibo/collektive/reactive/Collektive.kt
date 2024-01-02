@@ -1,7 +1,6 @@
 package it.unibo.collektive.reactive
 
 import it.unibo.collektive.ID
-import it.unibo.collektive.reactive.AggregateExpression
 import it.unibo.collektive.reactive.aggregate.AggregateContext
 
 /**
