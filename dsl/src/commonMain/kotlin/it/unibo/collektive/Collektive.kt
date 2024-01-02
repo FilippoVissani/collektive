@@ -4,7 +4,9 @@ import it.unibo.collektive.aggregate.AggregateContext
 import it.unibo.collektive.aggregate.AggregateResult
 import it.unibo.collektive.networking.InboundMessage
 import it.unibo.collektive.networking.Network
+import it.unibo.collektive.networking.OutboundMessage
 import it.unibo.collektive.state.State
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Create a Collektive device with a specific [id] and a [network] to manage incoming and outgoing messages,
@@ -76,6 +78,28 @@ class Collektive<R>(
             AggregateResult(localId, compute(), messagesToSend(), newState()).also {
                 network.write(it.toSend)
             }
+        }
+
+        /**
+         * TODO.
+         *
+         * @param localId
+         * @param aggregateExpression
+         */
+        fun test(
+            localId: ID,
+            aggregateExpression:
+            it.unibo.collektive.reactive.aggregate.AggregateContext.() -> StateFlow<OutboundMessage>,
+        ): StateFlow<OutboundMessage> {
+            return aggregate(localId, aggregateExpression)
+        }
+
+        private fun aggregate(
+            localId: ID,
+            aggregateExpression:
+            it.unibo.collektive.reactive.aggregate.AggregateContext.() -> StateFlow<OutboundMessage>,
+        ): StateFlow<OutboundMessage> = it.unibo.collektive.reactive.aggregate.AggregateContext(localId).run {
+            aggregateExpression()
         }
     }
 }

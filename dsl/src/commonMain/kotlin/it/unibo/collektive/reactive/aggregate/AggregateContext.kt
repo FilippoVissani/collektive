@@ -5,8 +5,6 @@ import it.unibo.collektive.field.Field
 import it.unibo.collektive.networking.InboundMessage
 import it.unibo.collektive.networking.OutboundMessage
 import it.unibo.collektive.networking.SingleOutboundMessage
-import it.unibo.collektive.reactive.AggregateExpression
-import it.unibo.collektive.reactive.flow.extensions.combineStates
 import it.unibo.collektive.reactive.flow.extensions.mapStates
 import it.unibo.collektive.stack.Path
 import it.unibo.collektive.stack.Stack
@@ -65,18 +63,12 @@ class AggregateContext(
      * The result of the exchange function is a field with as messages a map with key the id of devices across the
      * network and the result of the computation passed as relative local values.
      */
-    fun <T> exchange(initial: T, body: (Field<T>) -> Field<T>): AggregateExpression<Field<T>> {
+    fun <T> exchange(initial: T, body: (StateFlow<Field<T>>) -> StateFlow<Field<T>>): StateFlow<OutboundMessage> {
         val messages = messagesAt<T>(stack.currentPath())
         val previous = stateAt(stack.currentPath(), initial)
         val subject = mapStates(messages) { m -> newField(previous.value, m) }
-        return AggregateExpression {
-            mapStates(subject) { field ->
-                body(field).let { result ->
-                    val message = SingleOutboundMessage(result.localValue, result.excludeSelf())
-                    states.update { it + (stack.currentPath() to result.localValue) }
-                    OutboundMessage(localId, mapOf(stack.currentPath() to message))
-                }
-            }
+        return mapStates(body(subject)) { field ->
+            OutboundMessage(localId, mapOf(stack.currentPath() to SingleOutboundMessage(field)))
         }
     }
 
