@@ -1,6 +1,6 @@
 package it.unibo.collektive.reactive
 
-import it.unibo.collektive.networking.OutboundMessage
+import it.unibo.collektive.proactive.networking.OutboundMessage
 import kotlinx.coroutines.flow.StateFlow
 
 /**

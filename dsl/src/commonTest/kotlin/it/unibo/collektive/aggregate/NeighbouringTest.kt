@@ -3,9 +3,9 @@ package it.unibo.collektive.aggregate
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.maps.shouldContainValue
 import io.kotest.matchers.maps.shouldHaveSize
-import it.unibo.collektive.Collektive.Companion.aggregate
+import it.unibo.collektive.proactive.Collektive.Companion.aggregate
 import it.unibo.collektive.IntId
-import it.unibo.collektive.aggregate.ops.neighbouring
+import it.unibo.collektive.proactive.aggregate.ops.neighbouring
 import it.unibo.collektive.network.NetworkImplTest
 import it.unibo.collektive.network.NetworkManager
 

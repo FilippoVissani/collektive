@@ -2,10 +2,10 @@ package it.unibo.collektive.aggregate
 
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
-import it.unibo.collektive.Collektive.Companion.aggregate
+import it.unibo.collektive.proactive.Collektive.Companion.aggregate
 import it.unibo.collektive.IntId
-import it.unibo.collektive.aggregate.ops.share
-import it.unibo.collektive.aggregate.ops.sharing
+import it.unibo.collektive.proactive.aggregate.ops.share
+import it.unibo.collektive.proactive.aggregate.ops.sharing
 import it.unibo.collektive.field.Field
 import it.unibo.collektive.field.max
 import it.unibo.collektive.field.min

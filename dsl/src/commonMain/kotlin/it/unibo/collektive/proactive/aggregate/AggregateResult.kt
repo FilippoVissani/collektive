@@ -1,7 +1,7 @@
-package it.unibo.collektive.aggregate
+package it.unibo.collektive.proactive.aggregate
 
 import it.unibo.collektive.ID
-import it.unibo.collektive.networking.OutboundMessage
+import it.unibo.collektive.proactive.networking.OutboundMessage
 import it.unibo.collektive.state.State
 
 /**

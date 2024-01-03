@@ -1,19 +1,19 @@
 package it.unibo.collektive.aggregate
 
-import arrow.core.Option
-import arrow.core.getOrElse
-import arrow.core.some
 import it.unibo.collektive.ID
-import it.unibo.collektive.aggregate.ops.RepeatingContext
-import it.unibo.collektive.aggregate.ops.RepeatingContext.RepeatingResult
 import it.unibo.collektive.field.Field
-import it.unibo.collektive.networking.InboundMessage
-import it.unibo.collektive.networking.OutboundMessage
-import it.unibo.collektive.networking.SingleOutboundMessage
+import it.unibo.collektive.proactive.networking.InboundMessage
+import it.unibo.collektive.proactive.networking.OutboundMessage
+import it.unibo.collektive.proactive.networking.SingleOutboundMessage
+import it.unibo.collektive.reactive.flow.extensions.mapStates
 import it.unibo.collektive.stack.Path
 import it.unibo.collektive.stack.Stack
 import it.unibo.collektive.state.State
 import it.unibo.collektive.state.getTyped
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 /**
  * Context for managing aggregate computation.
@@ -22,23 +22,26 @@ import it.unibo.collektive.state.getTyped
  */
 class AggregateContext(
     private val localId: ID,
-    private val messages: Iterable<InboundMessage>,
-    private val previousState: State,
 ) {
-
     private val stack = Stack<Any>()
-    private var state: State = mapOf()
-    private var toBeSent = OutboundMessage(localId, emptyMap())
-
-    /**
-     * Messages to send to the other nodes.
-     */
-    fun messagesToSend(): OutboundMessage = toBeSent
+    private val states: MutableStateFlow<State> = MutableStateFlow(emptyMap())
+    private val inboundMessages: MutableStateFlow<Iterable<InboundMessage>> = MutableStateFlow(emptyList())
 
     /**
      * Return the current state of the device as a new state.
      */
-    fun newState(): State = state
+    fun state(): StateFlow<State> = states.asStateFlow()
+
+    /**
+     * TODO.
+     *
+     * @param inboundMessage
+     */
+    fun receiveMessage(inboundMessage: InboundMessage) {
+        inboundMessages.update { messages ->
+            messages.filter { it.senderId != inboundMessage.senderId } + inboundMessage
+        }
+    }
 
     private fun <T> newField(localValue: T, others: Map<ID, T>): Field<T> = Field(localId, localValue, others)
 
@@ -60,51 +63,18 @@ class AggregateContext(
      * The result of the exchange function is a field with as messages a map with key the id of devices across the
      * network and the result of the computation passed as relative local values.
      */
-    fun <X> exchange(initial: X, body: (Field<X>) -> Field<X>): Field<X> {
-        val messages = messagesAt<X>(stack.currentPath())
+    fun <T> exchange(initial: T, body: (StateFlow<Field<T>>) -> StateFlow<Field<T>>): StateFlow<OutboundMessage> {
+        val messages = messagesAt<T>(stack.currentPath())
         val previous = stateAt(stack.currentPath(), initial)
-        val subject = newField(previous, messages)
-        return body(subject).also { field ->
-            val message = SingleOutboundMessage(field.localValue, field.excludeSelf())
-            val path = stack.currentPath()
-            check(!toBeSent.messages.containsKey(path)) {
-                "Alignment was broken by multiple aligned calls with the same path: $path. " +
-                    "The most likely cause is an aggregate function call within a loop"
-            }
-            toBeSent = toBeSent.copy(messages = toBeSent.messages + (stack.currentPath() to message))
-            state = state + (stack.currentPath() to field.localValue)
+        val subject = mapStates(messages) { m -> newField(previous.value, m) }
+        var x: Path
+        body(subject).also {
+            x = stack.currentPath()
+        }
+        return mapStates(body(subject)) { field ->
+            OutboundMessage(localId, mapOf(x to SingleOutboundMessage(field.localValue, field.excludeSelf())))
         }
     }
-
-    /**
-     * Iteratively updates the value computing the [transform] expression from a [RepeatingContext]
-     * at each device using the last computed value or the [initial].
-     */
-    fun <Initial, Return> repeating(
-        initial: Initial,
-        transform: RepeatingContext<Initial, Return>.(Initial) -> RepeatingResult<Initial, Return>,
-    ): Return {
-        val context = RepeatingContext<Initial, Return>()
-        var res: Option<RepeatingResult<Initial, Return>>
-        transform(context, stateAt(stack.currentPath(), initial)).also {
-            res = it.some()
-            state = state + (stack.currentPath() to it.toReturn)
-        }
-        return res.getOrElse { error("This error should never be thrown") }.toReturn
-    }
-
-    /**
-     * Iteratively updates the value computing the [transform] expression at each device using the last
-     * computed value or the [initial].
-     */
-    fun <Initial> repeat(
-        initial: Initial,
-        transform: (Initial) -> Initial,
-    ): Initial =
-        repeating(initial) {
-            val res = transform(it)
-            RepeatingResult(res, res)
-        }
 
     /**
      * Alignment function that pushes in the stack the pivot, executes the body and pop the last
@@ -117,9 +87,11 @@ class AggregateContext(
     }
 
     @Suppress("UNCHECKED_CAST")
-    private fun <T> messagesAt(path: Path): Map<ID, T> = messages
-        .filter { it.messages.containsKey(path) }
-        .associate { it.senderId to it.messages[path] as T }
+    private fun <T> messagesAt(path: Path): StateFlow<Map<ID, T>> = mapStates(inboundMessages) { messages ->
+        messages
+            .filter { it.messages.containsKey(path) }
+            .associate { it.senderId to it.messages[path] as T }
+    }
 
-    private fun <T> stateAt(path: Path, default: T): T = previousState.getTyped(path, default)
+    private fun <T> stateAt(path: Path, default: T): StateFlow<T> = mapStates(states) { it.getTyped(path, default) }
 }

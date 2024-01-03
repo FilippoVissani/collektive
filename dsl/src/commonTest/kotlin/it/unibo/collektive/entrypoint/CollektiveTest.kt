@@ -3,9 +3,9 @@ package it.unibo.collektive.entrypoint
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
-import it.unibo.collektive.Collektive
+import it.unibo.collektive.proactive.Collektive
 import it.unibo.collektive.IntId
-import it.unibo.collektive.aggregate.AggregateContext
+import it.unibo.collektive.proactive.aggregate.AggregateContext
 import it.unibo.collektive.field.Field
 import it.unibo.collektive.network.NetworkImplTest
 import it.unibo.collektive.network.NetworkManager

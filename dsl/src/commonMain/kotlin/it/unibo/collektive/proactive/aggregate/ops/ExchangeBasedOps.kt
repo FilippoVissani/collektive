@@ -1,10 +1,10 @@
-package it.unibo.collektive.aggregate.ops
+package it.unibo.collektive.proactive.aggregate.ops
 
 import arrow.core.Option
 import arrow.core.getOrElse
 import arrow.core.none
 import arrow.core.some
-import it.unibo.collektive.aggregate.AggregateContext
+import it.unibo.collektive.proactive.aggregate.AggregateContext
 import it.unibo.collektive.field.Field
 
 /**

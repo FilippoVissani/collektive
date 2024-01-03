@@ -1,3 +1,4 @@
+/*
 package it.unibo.collektive.alchemist.incarnation
 
 import it.unibo.alchemist.model.Action
@@ -20,15 +21,17 @@ import it.unibo.alchemist.model.reactions.Event
 import it.unibo.alchemist.model.timedistributions.DiracComb
 import it.unibo.alchemist.model.times.DoubleTime
 import it.unibo.alchemist.util.RandomGenerators.nextDouble
-import it.unibo.collektive.aggregate.AggregateResult
+import it.unibo.collektive.proactive.aggregate.AggregateResult
 import it.unibo.collektive.alchemist.device.CollektiveDevice
 import org.apache.commons.math3.random.RandomGenerator
 import org.danilopianini.util.ListSet
 import java.lang.reflect.Method
 
+*/
 /**
  * Collektive incarnation in Alchemist.
- */
+ *//*
+
 class CollektiveIncarnation<P> : Incarnation<Any, P> where P : Position<P> {
     override fun getProperty(node: Node<Any>, molecule: Molecule, property: String?): Double =
         when (val data = node.getConcentration(molecule)) {
@@ -139,3 +142,4 @@ class CollektiveIncarnation<P> : Incarnation<Any, P> where P : Position<P> {
 
     private fun String?.toDefaultDouble(): Double = this?.toDoubleOrNull() ?: 1.0
 }
+*/

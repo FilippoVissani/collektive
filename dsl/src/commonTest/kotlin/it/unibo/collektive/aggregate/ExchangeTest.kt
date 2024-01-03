@@ -3,13 +3,13 @@ package it.unibo.collektive.aggregate
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
-import it.unibo.collektive.Collektive.Companion.aggregate
+import it.unibo.collektive.proactive.Collektive.Companion.aggregate
 import it.unibo.collektive.IntId
 import it.unibo.collektive.field.Field
 import it.unibo.collektive.network.NetworkImplTest
 import it.unibo.collektive.network.NetworkManager
-import it.unibo.collektive.networking.OutboundMessage
-import it.unibo.collektive.networking.SingleOutboundMessage
+import it.unibo.collektive.proactive.networking.OutboundMessage
+import it.unibo.collektive.proactive.networking.SingleOutboundMessage
 import it.unibo.collektive.stack.Path
 
 class ExchangeTest : StringSpec({

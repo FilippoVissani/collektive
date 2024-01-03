@@ -1,4 +1,4 @@
-package it.unibo.collektive.networking
+package it.unibo.collektive.proactive.networking
 
 import it.unibo.collektive.ID
 import it.unibo.collektive.stack.Path

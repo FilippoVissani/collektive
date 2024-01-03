@@ -1,4 +1,4 @@
-package it.unibo.collektive.networking
+package it.unibo.collektive.proactive.networking
 
 /**
  * Network interface for the aggregate computation.
