@@ -30,7 +30,7 @@ class AggregateContext(
     /**
      * Return the current state of the device as a new state.
      */
-    fun state(): StateFlow<State> = states.asStateFlow()
+    fun states(): StateFlow<State> = states.asStateFlow()
 
     /**
      * TODO.
@@ -67,12 +67,15 @@ class AggregateContext(
         val messages = messagesAt<T>(stack.currentPath())
         val previous = stateAt(stack.currentPath(), initial)
         val subject = mapStates(messages) { m -> newField(previous.value, m) }
-        var x: Path
-        body(subject).also {
-            x = stack.currentPath()
-        }
-        return mapStates(body(subject)) { field ->
-            OutboundMessage(localId, mapOf(x to SingleOutboundMessage(field.localValue, field.excludeSelf())))
+        return body(subject).let { flow ->
+            val alignmentPath = stack.currentPath()
+            mapStates(flow) { field ->
+                states.update { it + (alignmentPath to field.localValue) }
+                OutboundMessage(
+                    localId,
+                    mapOf(alignmentPath to SingleOutboundMessage(field.localValue, field.excludeSelf())),
+                )
+            }
         }
     }
 
