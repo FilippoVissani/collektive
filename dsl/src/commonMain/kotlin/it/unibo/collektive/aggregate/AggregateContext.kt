@@ -2,14 +2,14 @@ package it.unibo.collektive.aggregate
 
 import it.unibo.collektive.ID
 import it.unibo.collektive.field.Field
-import it.unibo.collektive.reactive.ReactiveOutboundMessage
 import it.unibo.collektive.reactive.InboundMessage
-import it.unibo.collektive.reactive.flow.extensions.mapStates
-import it.unibo.collektive.stack.Path
-import it.unibo.collektive.stack.Stack
+import it.unibo.collektive.reactive.ReactiveOutboundMessage
 import it.unibo.collektive.reactive.ReactiveState
 import it.unibo.collektive.reactive.SingleOutboundMessage
+import it.unibo.collektive.reactive.flow.extensions.mapStates
 import it.unibo.collektive.reactive.getTyped
+import it.unibo.collektive.stack.Path
+import it.unibo.collektive.stack.Stack
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -21,7 +21,7 @@ import kotlinx.coroutines.flow.update
  */
 class AggregateContext(
     private val localId: ID,
-    private val inboundMessages: MutableStateFlow<Iterable<InboundMessage>>,
+    private val inboundMessages: MutableStateFlow<List<InboundMessage>>,
 ) {
     private val stack = Stack<Any>()
     private val state: ReactiveState = mutableMapOf()

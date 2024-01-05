@@ -19,7 +19,7 @@ object Collektive {
      */
     fun <R> aggregate(
         localId: ID,
-        inboundMessages: MutableStateFlow<Iterable<InboundMessage>> = MutableStateFlow(emptyList()),
+        inboundMessages: MutableStateFlow<List<InboundMessage>> = MutableStateFlow(emptyList()),
         compute: AggregateContext.() -> StateFlow<R>,
     ): ReactiveAggregateResult<R> = AggregateContext(localId, inboundMessages).run {
         ReactiveAggregateResult(localId, compute(), outboundMessages(), state())
