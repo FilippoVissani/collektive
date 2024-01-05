@@ -2,17 +2,16 @@ package it.unibo.collektive.aggregate
 
 import it.unibo.collektive.ID
 import it.unibo.collektive.field.Field
-import it.unibo.collektive.proactive.networking.InboundMessage
-import it.unibo.collektive.proactive.networking.OutboundMessage
-import it.unibo.collektive.proactive.networking.SingleOutboundMessage
+import it.unibo.collektive.reactive.ReactiveOutboundMessage
+import it.unibo.collektive.reactive.InboundMessage
 import it.unibo.collektive.reactive.flow.extensions.mapStates
 import it.unibo.collektive.stack.Path
 import it.unibo.collektive.stack.Stack
-import it.unibo.collektive.state.State
-import it.unibo.collektive.state.getTyped
+import it.unibo.collektive.reactive.ReactiveState
+import it.unibo.collektive.reactive.SingleOutboundMessage
+import it.unibo.collektive.reactive.getTyped
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
 /**
@@ -22,15 +21,22 @@ import kotlinx.coroutines.flow.update
  */
 class AggregateContext(
     private val localId: ID,
+    private val inboundMessages: MutableStateFlow<Iterable<InboundMessage>>,
 ) {
     private val stack = Stack<Any>()
-    private val states: MutableStateFlow<State> = MutableStateFlow(emptyMap())
-    private val inboundMessages: MutableStateFlow<Iterable<InboundMessage>> = MutableStateFlow(emptyList())
+    private val state: ReactiveState = mutableMapOf()
+    private var outboundMessages: ReactiveOutboundMessage = ReactiveOutboundMessage(localId, emptyMap())
 
     /**
      * Return the current state of the device as a new state.
      */
-    fun states(): StateFlow<State> = states.asStateFlow()
+    fun state(): ReactiveState = state.toMap()
+
+    /**
+     * TODO.
+     *
+     */
+    fun outboundMessages() = outboundMessages
 
     /**
      * TODO.
@@ -63,19 +69,17 @@ class AggregateContext(
      * The result of the exchange function is a field with as messages a map with key the id of devices across the
      * network and the result of the computation passed as relative local values.
      */
-    fun <T> exchange(initial: T, body: (StateFlow<Field<T>>) -> StateFlow<Field<T>>): StateFlow<OutboundMessage> {
+    fun <T> exchange(initial: T, body: (StateFlow<Field<T>>) -> StateFlow<Field<T>>): StateFlow<Field<T>> {
         val messages = messagesAt<T>(stack.currentPath())
         val previous = stateAt(stack.currentPath(), initial)
         val subject = mapStates(messages) { m -> newField(previous.value, m) }
-        return body(subject).let { flow ->
+        return body(subject).also { flow ->
             val alignmentPath = stack.currentPath()
-            mapStates(flow) { field ->
-                states.update { it + (alignmentPath to field.localValue) }
-                OutboundMessage(
-                    localId,
-                    mapOf(alignmentPath to SingleOutboundMessage(field.localValue, field.excludeSelf())),
-                )
+            val message = mapStates(flow) { field ->
+                SingleOutboundMessage(field.localValue, field.excludeSelf())
             }
+            outboundMessages = outboundMessages.copy(messages = outboundMessages.messages + (alignmentPath to message))
+            state.getTyped(alignmentPath, mapStates(flow) { it.localValue })
         }
     }
 
@@ -96,5 +100,5 @@ class AggregateContext(
             .associate { it.senderId to it.messages[path] as T }
     }
 
-    private fun <T> stateAt(path: Path, default: T): StateFlow<T> = mapStates(states) { it.getTyped(path, default) }
+    private fun <T> stateAt(path: Path, default: T): StateFlow<T> = state.getTyped(path, default)
 }
