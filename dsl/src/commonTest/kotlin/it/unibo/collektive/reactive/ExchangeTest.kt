@@ -80,7 +80,13 @@ class ExchangeTest : StringSpec({
             aggregateResult0
                 .toSend
                 .messages
-                .mapValues { (_, v) -> v.value } shouldBe mapOf(path1 to ReactiveSingleOutboundMessage(expected2, emptyMap()))
+                .mapValues { (_, v) -> v.value } shouldBe
+                    mapOf(
+                        path1 to ReactiveSingleOutboundMessage(
+                            expected2,
+                            emptyMap()
+                        )
+                    )
         }
     }
 
@@ -122,7 +128,16 @@ class ExchangeTest : StringSpec({
             aggregateResult0
                 .toSend
                 .messages
-                .mapValues { (_, v) -> v.value } shouldBe mapOf(path1 to ReactiveSingleOutboundMessage(expected2, mapOf((id2 to expected7), (id1 to expected6))))
+                .mapValues { (_, v) -> v.value } shouldBe
+                    mapOf(
+                        path1 to ReactiveSingleOutboundMessage(
+                            expected2,
+                            mapOf(
+                                (id2 to expected7),
+                                (id1 to expected6)
+                            )
+                        )
+                    )
 
             aggregateResult1
                 .result
@@ -134,7 +149,9 @@ class ExchangeTest : StringSpec({
             aggregateResult1
                 .toSend
                 .messages
-                .mapValues { (_, v) -> v.value } shouldBe mapOf(path1 to ReactiveSingleOutboundMessage(expected3, mapOf((id0 to expected3), (id2 to expected7))))
+                .mapValues { (_, v) -> v.value } shouldBe
+                    mapOf(path1 to ReactiveSingleOutboundMessage(
+                        expected3, mapOf((id0 to expected3), (id2 to expected7))))
 
             aggregateResult2
                 .result
@@ -182,7 +199,15 @@ class ExchangeTest : StringSpec({
             aggregateResult0
                 .toSend
                 .messages
-                .mapValues { (_, v) -> v.value } shouldBe mapOf(truePath to ReactiveSingleOutboundMessage(expectedTrue, mapOf((id1 to expectedTrue))))
+                .mapValues { (_, v) -> v.value } shouldBe
+                    mapOf(
+                        truePath to ReactiveSingleOutboundMessage(
+                            expectedTrue,
+                            mapOf(
+                                (id1 to expectedTrue)
+                            )
+                        )
+                    )
 
             aggregateResult1
                 .result
@@ -194,7 +219,15 @@ class ExchangeTest : StringSpec({
             aggregateResult1
                 .toSend
                 .messages
-                .mapValues { (_, v) -> v.value } shouldBe mapOf(truePath to ReactiveSingleOutboundMessage(expectedTrue, mapOf((id0 to expectedTrue))))
+                .mapValues { (_, v) -> v.value } shouldBe
+                    mapOf(
+                        truePath to ReactiveSingleOutboundMessage(
+                            expectedTrue,
+                            mapOf(
+                                (id0 to expectedTrue)
+                            )
+                        )
+                    )
         }
     }
 
@@ -230,7 +263,13 @@ class ExchangeTest : StringSpec({
             aggregateResult0
                 .toSend
                 .messages
-                .mapValues { (_, v) -> v.value } shouldBe mapOf(truePath to ReactiveSingleOutboundMessage(expectedTrue, emptyMap()))
+                .mapValues { (_, v) -> v.value } shouldBe
+                    mapOf(
+                        truePath to ReactiveSingleOutboundMessage(
+                            expectedTrue,
+                            emptyMap()
+                        )
+                    )
 
             aggregateResult1
                 .result
@@ -242,7 +281,13 @@ class ExchangeTest : StringSpec({
             aggregateResult1
                 .toSend
                 .messages
-                .mapValues { (_, v) -> v.value } shouldBe mapOf(falsePath to ReactiveSingleOutboundMessage(expectedFalse, emptyMap()))
+                .mapValues { (_, v) -> v.value } shouldBe
+                    mapOf(
+                        falsePath to ReactiveSingleOutboundMessage(
+                            expectedFalse,
+                            emptyMap()
+                        )
+                    )
         }
     }
 })
