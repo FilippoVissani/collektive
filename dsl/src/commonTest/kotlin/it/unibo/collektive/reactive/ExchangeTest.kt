@@ -33,6 +33,18 @@ class ExchangeTest : StringSpec({
         }
     }
 
+    val alwaysTrue: (StateFlow<Field<Boolean>>) -> StateFlow<Field<Boolean>> = { flow ->
+        mapStates(flow) { field ->
+            field.mapWithId { _, _ -> true }
+        }
+    }
+
+    val alwaysFalse: (StateFlow<Field<Boolean>>) -> StateFlow<Field<Boolean>> = { flow ->
+        mapStates(flow) { field ->
+            field.mapWithId { _, _ -> false }
+        }
+    }
+
     suspend fun <R> printResults(aggregateResult: ReactiveAggregateResult<R>) = coroutineScope {
         launch(Dispatchers.Default) {
             aggregateResult.result.collect {
@@ -108,7 +120,7 @@ class ExchangeTest : StringSpec({
         }
     }
 
-    "Three devices" {
+    "Exchange should work between three aligned devices" {
         runBlocking {
             val channel0: MutableStateFlow<List<InboundMessage>> = MutableStateFlow(emptyList())
             val channel1: MutableStateFlow<List<InboundMessage>> = MutableStateFlow(emptyList())
@@ -132,6 +144,58 @@ class ExchangeTest : StringSpec({
                         aggregateResult0 to channel0,
                         aggregateResult1 to channel1,
                         aggregateResult2 to channel2,
+                    )
+                )
+            }
+            delay(100)
+            job.cancelAndJoin()
+        }
+    }
+
+    "Devices should be aligned" {
+        runBlocking {
+            val channel0: MutableStateFlow<List<InboundMessage>> = MutableStateFlow(emptyList())
+            val channel1: MutableStateFlow<List<InboundMessage>> = MutableStateFlow(emptyList())
+
+            val aggregateResult0 = aggregate(id0, channel0) {
+                if(true) exchange(true, alwaysTrue) else exchange(false, alwaysFalse)
+            }
+
+            val aggregateResult1 = aggregate(id1, channel1) {
+                if(true) exchange(true, alwaysTrue) else exchange(false, alwaysFalse)
+            }
+            println("#############################")
+            val job = launch(Dispatchers.Default) {
+                runSimulation(
+                    mapOf(
+                        aggregateResult0 to channel0,
+                        aggregateResult1 to channel1,
+                    )
+                )
+            }
+            delay(100)
+            job.cancelAndJoin()
+        }
+    }
+
+    "Devices should not be aligned" {
+        runBlocking {
+            val channel0: MutableStateFlow<List<InboundMessage>> = MutableStateFlow(emptyList())
+            val channel1: MutableStateFlow<List<InboundMessage>> = MutableStateFlow(emptyList())
+
+            val aggregateResult0 = aggregate(id0, channel0) {
+                if(true) exchange(true, alwaysTrue) else exchange(false, alwaysFalse)
+            }
+
+            val aggregateResult1 = aggregate(id1, channel1) {
+                if(false) exchange(true, alwaysTrue) else exchange(false, alwaysFalse)
+            }
+            println("#############################")
+            val job = launch(Dispatchers.Default) {
+                runSimulation(
+                    mapOf(
+                        aggregateResult0 to channel0,
+                        aggregateResult1 to channel1,
                     )
                 )
             }
