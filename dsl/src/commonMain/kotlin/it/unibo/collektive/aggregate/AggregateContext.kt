@@ -2,10 +2,10 @@ package it.unibo.collektive.aggregate
 
 import it.unibo.collektive.ID
 import it.unibo.collektive.field.Field
-import it.unibo.collektive.reactive.InboundMessage
+import it.unibo.collektive.reactive.ReactiveInboundMessage
 import it.unibo.collektive.reactive.ReactiveOutboundMessage
+import it.unibo.collektive.reactive.ReactiveSingleOutboundMessage
 import it.unibo.collektive.reactive.ReactiveState
-import it.unibo.collektive.reactive.SingleOutboundMessage
 import it.unibo.collektive.reactive.flow.extensions.mapStates
 import it.unibo.collektive.reactive.getTyped
 import it.unibo.collektive.stack.Path
@@ -21,7 +21,7 @@ import kotlinx.coroutines.flow.update
  */
 class AggregateContext(
     private val localId: ID,
-    private val inboundMessages: MutableStateFlow<List<InboundMessage>>,
+    private val reactiveInboundMessages: MutableStateFlow<List<ReactiveInboundMessage>>,
 ) {
     private val stack = Stack<Any>()
     private val state: ReactiveState = mutableMapOf()
@@ -41,11 +41,11 @@ class AggregateContext(
     /**
      * TODO.
      *
-     * @param inboundMessage
+     * @param reactiveInboundMessage
      */
-    fun receiveMessage(inboundMessage: InboundMessage) {
-        inboundMessages.update { messages ->
-            messages.filter { it.senderId != inboundMessage.senderId } + inboundMessage
+    fun receiveMessage(reactiveInboundMessage: ReactiveInboundMessage) {
+        reactiveInboundMessages.update { messages ->
+            messages.filter { it.senderId != reactiveInboundMessage.senderId } + reactiveInboundMessage
         }
     }
 
@@ -76,7 +76,7 @@ class AggregateContext(
         return body(subject).also { flow ->
             val alignmentPath = stack.currentPath()
             val message = mapStates(flow) { field ->
-                SingleOutboundMessage(field.localValue, field.excludeSelf())
+                ReactiveSingleOutboundMessage(field.localValue, field.excludeSelf())
             }
             outboundMessages = outboundMessages.copy(messages = outboundMessages.messages + (alignmentPath to message))
             state.getTyped(alignmentPath, mapStates(flow) { it.localValue })
@@ -94,7 +94,7 @@ class AggregateContext(
     }
 
     @Suppress("UNCHECKED_CAST")
-    private fun <T> messagesAt(path: Path): StateFlow<Map<ID, T>> = mapStates(inboundMessages) { messages ->
+    private fun <T> messagesAt(path: Path): StateFlow<Map<ID, T>> = mapStates(reactiveInboundMessages) { messages ->
         messages
             .filter { it.messages.containsKey(path) }
             .associate { it.senderId to it.messages[path] as T }

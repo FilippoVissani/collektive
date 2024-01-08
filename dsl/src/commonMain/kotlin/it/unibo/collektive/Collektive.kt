@@ -1,8 +1,8 @@
 package it.unibo.collektive
 
 import it.unibo.collektive.aggregate.AggregateContext
-import it.unibo.collektive.reactive.InboundMessage
 import it.unibo.collektive.reactive.ReactiveAggregateResult
+import it.unibo.collektive.reactive.ReactiveInboundMessage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -19,9 +19,9 @@ object Collektive {
      */
     fun <R> aggregate(
         localId: ID,
-        inboundMessages: MutableStateFlow<List<InboundMessage>> = MutableStateFlow(emptyList()),
+        reactiveInboundMessages: MutableStateFlow<List<ReactiveInboundMessage>> = MutableStateFlow(emptyList()),
         compute: AggregateContext.() -> StateFlow<R>,
-    ): ReactiveAggregateResult<R> = AggregateContext(localId, inboundMessages).run {
+    ): ReactiveAggregateResult<R> = AggregateContext(localId, reactiveInboundMessages).run {
         ReactiveAggregateResult(localId, compute(), outboundMessages(), state())
     }
 }
