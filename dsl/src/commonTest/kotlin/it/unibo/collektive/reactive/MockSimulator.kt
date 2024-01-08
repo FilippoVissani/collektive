@@ -30,11 +30,11 @@ suspend fun <R> printResults(aggregateResult: ReactiveAggregateResult<R>) = coro
 }
 
 suspend fun <R> runSimulation(simulation: Map<ReactiveAggregateResult<R>, MutableStateFlow<List<ReactiveInboundMessage>>>) = coroutineScope {
-    simulation.keys.forEach {
+/*    simulation.keys.forEach {
         launch(Dispatchers.Default) {
             printResults(it)
         }
-    }
+    }*/
     simulation.forEach { (aggregateResult, _) ->
         aggregateResult.toSend.messages.forEach { (path, flow) ->
             launch(Dispatchers.Default) {
