@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-class BranchTest : StringSpec({
+class MuxTest : StringSpec({
 
     // device ids
     val id0 = IntId(0)
@@ -39,7 +39,7 @@ class BranchTest : StringSpec({
             val reactiveBoolean = MutableStateFlow(true)
 
             val aggregateResult0: ReactiveAggregateResult<Field<Boolean>> = Collektive.aggregate(id0, channel0) {
-                branch(
+                mux(
                     { reactiveBoolean },
                     { exchange(true, alwaysTrue) },
                     { exchange(false, alwaysFalse) },
@@ -47,7 +47,7 @@ class BranchTest : StringSpec({
             }
 
             val aggregateResult1: ReactiveAggregateResult<Field<Boolean>> = Collektive.aggregate(id1, channel1) {
-                branch(
+                mux(
                     { reactiveBoolean },
                     { exchange(true, alwaysTrue) },
                     { exchange(false, alwaysFalse) },
@@ -75,7 +75,7 @@ class BranchTest : StringSpec({
             val reactiveBoolean1 = MutableStateFlow(false)
 
             val aggregateResult0: ReactiveAggregateResult<Field<Boolean>> = Collektive.aggregate(id0, channel0) {
-                branch(
+                mux(
                     { reactiveBoolean0 },
                     { exchange(true, alwaysTrue) },
                     { exchange(false, alwaysFalse) },
@@ -83,7 +83,7 @@ class BranchTest : StringSpec({
             }
 
             val aggregateResult1: ReactiveAggregateResult<Field<Boolean>> = Collektive.aggregate(id1, channel1) {
-                branch(
+                mux(
                     { reactiveBoolean1 },
                     { exchange(true, alwaysTrue) },
                     { exchange(false, alwaysFalse) },

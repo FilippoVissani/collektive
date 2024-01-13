@@ -93,7 +93,7 @@ class AggregateContext(
      * @param el
      * @return
      */
-    fun <T> branch(condition: () -> StateFlow<Boolean>, th: () -> StateFlow<T>, el: () -> StateFlow<T>): StateFlow<T> {
+    fun <T> mux(condition: () -> StateFlow<Boolean>, th: () -> StateFlow<T>, el: () -> StateFlow<T>): StateFlow<T> {
         return condition().let { conditionFlow ->
             val thFlow = th()
             val elFlow = el()
