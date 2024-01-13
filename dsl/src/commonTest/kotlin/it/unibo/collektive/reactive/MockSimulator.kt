@@ -7,7 +7,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 suspend fun <R> printResults(aggregateResult: ReactiveAggregateResult<R>) = coroutineScope {
-    println("###################################")
     launch(Dispatchers.Default) {
         aggregateResult.result.collect {
             println("${aggregateResult.localId} -> result: $it")
@@ -30,11 +29,12 @@ suspend fun <R> printResults(aggregateResult: ReactiveAggregateResult<R>) = coro
 }
 
 suspend fun <R> runSimulation(simulation: Map<ReactiveAggregateResult<R>, MutableStateFlow<List<ReactiveInboundMessage>>>) = coroutineScope {
-/*    simulation.keys.forEach {
+    println("###################################")
+    simulation.keys.forEach {
         launch(Dispatchers.Default) {
             printResults(it)
         }
-    }*/
+    }
     simulation.forEach { (aggregateResult, _) ->
         aggregateResult.toSend.messages.forEach { (path, flow) ->
             launch(Dispatchers.Default) {
