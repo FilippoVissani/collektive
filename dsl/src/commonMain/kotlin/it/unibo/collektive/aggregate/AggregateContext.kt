@@ -6,6 +6,7 @@ import it.unibo.collektive.reactive.ReactiveInboundMessage
 import it.unibo.collektive.reactive.ReactiveOutboundMessage
 import it.unibo.collektive.reactive.ReactiveSingleOutboundMessage
 import it.unibo.collektive.reactive.ReactiveState
+import it.unibo.collektive.reactive.flow.extensions.combineStates
 import it.unibo.collektive.reactive.flow.extensions.mapStates
 import it.unibo.collektive.reactive.getTyped
 import it.unibo.collektive.stack.Path
@@ -80,6 +81,25 @@ class AggregateContext(
             }
             outboundMessages = outboundMessages.copy(messages = outboundMessages.messages + (alignmentPath to message))
             state.getTyped(alignmentPath, mapStates(flow) { it.localValue })
+        }
+    }
+
+    /**
+     * TODO.
+     *
+     * @param T
+     * @param condition
+     * @param th
+     * @param el
+     * @return
+     */
+    fun <T> branch(condition: () -> StateFlow<Boolean>, th: () -> StateFlow<T>, el: () -> StateFlow<T>): StateFlow<T> {
+        return condition().let { conditionFlow ->
+            val thFlow = th()
+            val elFlow = el()
+            combineStates(conditionFlow, thFlow, elFlow) { c, t, e ->
+                if (c) t else e
+            }
         }
     }
 
