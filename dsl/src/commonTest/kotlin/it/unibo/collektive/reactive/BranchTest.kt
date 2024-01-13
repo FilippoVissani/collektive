@@ -66,4 +66,39 @@ class BranchTest : StringSpec({
             job.cancelAndJoin()
         }
     }
+
+    "Devices should not be aligned" {
+        runBlocking {
+            val channel0: MutableStateFlow<List<ReactiveInboundMessage>> = MutableStateFlow(emptyList())
+            val channel1: MutableStateFlow<List<ReactiveInboundMessage>> = MutableStateFlow(emptyList())
+            val reactiveBoolean0 = MutableStateFlow(true)
+            val reactiveBoolean1 = MutableStateFlow(false)
+
+            val aggregateResult0: ReactiveAggregateResult<Field<Boolean>> = Collektive.aggregate(id0, channel0) {
+                branch(
+                    { reactiveBoolean0 },
+                    { exchange(true, alwaysTrue) },
+                    { exchange(false, alwaysFalse) },
+                )
+            }
+
+            val aggregateResult1: ReactiveAggregateResult<Field<Boolean>> = Collektive.aggregate(id1, channel1) {
+                branch(
+                    { reactiveBoolean1 },
+                    { exchange(true, alwaysTrue) },
+                    { exchange(false, alwaysFalse) },
+                )
+            }
+            val job = launch(Dispatchers.Default) {
+                runSimulation(
+                    mapOf(
+                        aggregateResult0 to channel0,
+                        aggregateResult1 to channel1,
+                    )
+                )
+            }
+            delay(100)
+            job.cancelAndJoin()
+        }
+    }
 })
