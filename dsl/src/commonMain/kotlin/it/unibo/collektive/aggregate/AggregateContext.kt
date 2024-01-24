@@ -11,8 +11,13 @@ import it.unibo.collektive.reactive.flow.extensions.mapStates
 import it.unibo.collektive.reactive.getTyped
 import it.unibo.collektive.stack.Path
 import it.unibo.collektive.stack.Stack
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flatMapMerge
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 
 /**
@@ -121,4 +126,18 @@ class AggregateContext(
     }
 
     private fun <T> stateAt(path: Path, default: T): StateFlow<T> = state.getTyped(path, default)
+}
+
+/**
+ * TODO.
+ *
+ * @param T
+ * @param th
+ * @param el
+ * @return
+ */
+fun <T> StateFlow<Boolean>.branch(th: StateFlow<T>, el: StateFlow<T>): StateFlow<T> {
+    return combineStates(this, th, el) { c, t, e ->
+        if (c) t else e
+    }
 }
