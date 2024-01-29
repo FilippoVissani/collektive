@@ -32,19 +32,25 @@ class BranchTest : StringSpec({
         }
     }
 
-    "Test" {
+    "Devices with same condition should be aligned" {
         runBlocking {
             val channel0: MutableStateFlow<List<ReactiveInboundMessage>> = MutableStateFlow(emptyList())
             val channel1: MutableStateFlow<List<ReactiveInboundMessage>> = MutableStateFlow(emptyList())
             val reactiveBoolean0 = MutableStateFlow(true)
-            val reactiveBoolean1 = MutableStateFlow(false)
+            val reactiveBoolean1 = MutableStateFlow(true)
 
             val aggregateResult0 = Collektive.aggregate(id0, channel0) {
-                reactiveBoolean0.branch(exchange("initial", trueFunction), exchange("initial", falseFunction))
+                reactiveBoolean0.branch(
+                    { exchange("initial", trueFunction) },
+                    { exchange("initial", falseFunction) },
+                )
             }
 
             val aggregateResult1 = Collektive.aggregate(id1, channel1) {
-                reactiveBoolean1.branch(exchange("initial", trueFunction), exchange("initial", falseFunction))
+                reactiveBoolean1.branch(
+                    { exchange("initial", trueFunction) },
+                    { exchange("initial", falseFunction) },
+                )
             }
             val job = launch(Dispatchers.Default) {
                 runSimulation(

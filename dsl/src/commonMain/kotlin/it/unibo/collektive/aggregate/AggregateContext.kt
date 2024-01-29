@@ -6,6 +6,7 @@ import it.unibo.collektive.reactive.ReactiveInboundMessage
 import it.unibo.collektive.reactive.ReactiveOutboundMessage
 import it.unibo.collektive.reactive.ReactiveSingleOutboundMessage
 import it.unibo.collektive.reactive.ReactiveState
+import it.unibo.collektive.reactive.flow.extensions.combineBranchStates
 import it.unibo.collektive.reactive.flow.extensions.combineStates
 import it.unibo.collektive.reactive.flow.extensions.mapStates
 import it.unibo.collektive.reactive.getTyped
@@ -141,3 +142,14 @@ fun <T> StateFlow<Boolean>.branch(th: StateFlow<T>, el: StateFlow<T>): StateFlow
         if (c) t else e
     }
 }
+
+/**
+ * TODO.
+ *
+ * @param T
+ * @param th
+ * @param el
+ * @return
+ */
+fun <T> StateFlow<Boolean>.branch(th: () -> StateFlow<T>, el: () -> StateFlow<T>): StateFlow<T> =
+    combineBranchStates(this, th, el)
