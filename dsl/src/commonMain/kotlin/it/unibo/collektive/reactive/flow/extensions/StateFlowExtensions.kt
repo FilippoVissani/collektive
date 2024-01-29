@@ -1,10 +1,14 @@
 package it.unibo.collektive.reactive.flow.extensions
 
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flattenConcat
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
@@ -73,4 +77,17 @@ fun <T1, T2, T3, R> combineStates(
 ): StateFlow<R> = combineStates(
     getValue = { transform(stateFlow1.value, stateFlow2.value, stateFlow3.value) },
     flow = combine(stateFlow1, stateFlow2, stateFlow3) { value1, value2, value3 -> transform(value1, value2, value3) }
+)
+
+/**
+ * TODO.
+ *
+ * @param T
+ * @param stateFlow
+ * @return
+ */
+@OptIn(ExperimentalCoroutinesApi::class)
+fun <T> flattenConcat(stateFlow: StateFlow<StateFlow<T>>): StateFlow<T> = combineStates(
+    getValue = { stateFlow.value.value },
+    flow = stateFlow.flattenConcat()
 )
