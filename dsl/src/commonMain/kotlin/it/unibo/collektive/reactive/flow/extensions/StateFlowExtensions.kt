@@ -81,25 +81,6 @@ fun <T1, T2, T3, R> combineStates(
  * TODO.
  *
  * @param T
- * @param condition
- * @param th
- * @param el
- * @return
- */
-@OptIn(ExperimentalCoroutinesApi::class)
-fun <T> combineBranchStates(
-    condition: StateFlow<Boolean>,
-    th: () -> StateFlow<T>,
-    el: () -> StateFlow<T>,
-): StateFlow<T> = combineStates(
-    getValue = { if (condition.value) th().value else el().value },
-    flow = condition.map { if (it) th() else el() }.flattenConcat()
-)
-
-/**
- * TODO.
- *
- * @param T
  * @param stateFlow
  * @return
  */

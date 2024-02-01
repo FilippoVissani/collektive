@@ -5,13 +5,11 @@ import io.kotest.core.spec.style.StringSpec
 import it.unibo.collektive.Collektive
 import it.unibo.collektive.IntId
 import it.unibo.collektive.field.Field
-import it.unibo.collektive.reactive.flow.extensions.mapStates
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -21,16 +19,12 @@ class BranchTest : StringSpec({
     val id0 = IntId(0)
     val id1 = IntId(1)
 
-    val trueFunction: (StateFlow<Field<String>>) -> StateFlow<Field<String>> = { flow ->
-        mapStates(flow) { field ->
-            field.mapWithId { _, _ -> "trueBranch" }
-        }
+    val trueFunction: (Field<String>) -> Field<String> = { field ->
+        field.mapWithId { _, _ -> "trueBranch" }
     }
 
-    val falseFunction: (StateFlow<Field<String>>) -> StateFlow<Field<String>> = { flow ->
-        mapStates(flow) { field ->
-            field.mapWithId { _, _ -> "falseBranch" }
-        }
+    val falseFunction: (Field<String>) -> Field<String> = { field ->
+        field.mapWithId { _, _ -> "falseBranch" }
     }
 
     suspend fun aggregateProgram(
@@ -59,6 +53,7 @@ class BranchTest : StringSpec({
                 { exchange("initial", falseFunction) },
             )
         }
+
         val job = launch(Dispatchers.Default) {
             runSimulation(
                 mapOf(
@@ -67,10 +62,10 @@ class BranchTest : StringSpec({
                 )
             )
         }
-        delay(100)
+        delay(200)
         reactiveBoolean0.update { finalCondition0 }
         reactiveBoolean1.update { finalCondition1 }
-        delay(100)
+        delay(200)
         job.cancelAndJoin()
     }
 
