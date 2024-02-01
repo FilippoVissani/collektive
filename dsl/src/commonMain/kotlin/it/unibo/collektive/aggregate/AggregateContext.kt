@@ -2,23 +2,23 @@ package it.unibo.collektive.aggregate
 
 import it.unibo.collektive.ID
 import it.unibo.collektive.field.Field
+import it.unibo.collektive.proactive.networking.OutboundMessage
+import it.unibo.collektive.proactive.networking.SingleOutboundMessage
 import it.unibo.collektive.reactive.ReactiveInboundMessage
-import it.unibo.collektive.reactive.ReactiveOutboundMessage
-import it.unibo.collektive.reactive.ReactiveSingleOutboundMessage
-import it.unibo.collektive.reactive.ReactiveState
-import it.unibo.collektive.reactive.flow.extensions.combineBranchStates
 import it.unibo.collektive.reactive.flow.extensions.combineStates
+import it.unibo.collektive.reactive.flow.extensions.flattenConcat
 import it.unibo.collektive.reactive.flow.extensions.mapStates
-import it.unibo.collektive.reactive.getTyped
 import it.unibo.collektive.stack.Path
 import it.unibo.collektive.stack.Stack
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.coroutineScope
+import it.unibo.collektive.state.State
+import it.unibo.collektive.state.getTyped
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.flatMapMerge
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 
 /**
@@ -31,19 +31,20 @@ class AggregateContext(
     private val reactiveInboundMessages: MutableStateFlow<List<ReactiveInboundMessage>>,
 ) {
     private val stack = Stack<Any>()
-    private val state: ReactiveState = mutableMapOf()
-    private var outboundMessages: ReactiveOutboundMessage = ReactiveOutboundMessage(localId, emptyMap())
+    private val state: MutableStateFlow<State> = MutableStateFlow(emptyMap())
+    private val outboundMessages: MutableStateFlow<OutboundMessage> =
+        MutableStateFlow(OutboundMessage(localId, emptyMap()))
 
     /**
      * Return the current state of the device as a new state.
      */
-    fun state(): ReactiveState = state.toMap()
+    fun state(): StateFlow<State> = state.asStateFlow()
 
     /**
      * TODO.
      *
      */
-    fun outboundMessages() = outboundMessages
+    fun outboundMessages() = outboundMessages.asStateFlow()
 
     /**
      * TODO.
@@ -76,18 +77,45 @@ class AggregateContext(
      * The result of the exchange function is a field with as messages a map with key the id of devices across the
      * network and the result of the computation passed as relative local values.
      */
-    fun <T> exchange(initial: T, body: (StateFlow<Field<T>>) -> StateFlow<Field<T>>): StateFlow<Field<T>> {
+    @OptIn(DelicateCoroutinesApi::class)
+    fun <T> exchange(initial: T, body: (Field<T>) -> Field<T>): StateFlow<Field<T>> {
         val messages = messagesAt<T>(stack.currentPath())
         val previous = stateAt(stack.currentPath(), initial)
-        val subject = mapStates(messages) { m -> newField(previous.value, m) }
-        return body(subject).also { flow ->
-            val alignmentPath = stack.currentPath()
-            val message = mapStates(flow) { field ->
-                ReactiveSingleOutboundMessage(field.localValue, field.excludeSelf())
+        val subject = combineStates(messages, previous) { m, p -> newField(p, m) }
+        val alignmentPath = stack.currentPath()
+        subject.onEach { subjectField ->
+            body(subjectField).also { field ->
+                val message = SingleOutboundMessage(field.localValue, field.excludeSelf())
+                outboundMessages.update { it.copy(messages = it.messages + (alignmentPath to message)) }
+                state.update { it + (alignmentPath to field.localValue) }
             }
-            outboundMessages = outboundMessages.copy(messages = outboundMessages.messages + (alignmentPath to message))
-            state.getTyped(alignmentPath, mapStates(flow) { it.localValue })
-        }
+        }.launchIn(GlobalScope)
+        return mapStates(subject) { body(it) }
+    }
+
+    /**
+     * TODO.
+     *
+     * @param T
+     * @param condition
+     * @param th
+     * @param el
+     * @return
+     */
+    fun <T> branch(condition: () -> StateFlow<Boolean>, th: () -> StateFlow<T>, el: () -> StateFlow<T>): StateFlow<T> {
+        val currentPath = stack.currentPath()
+        return flattenConcat(
+            mapStates(condition()) { newCondition ->
+                currentPath.path.forEach { stack.alignRaw(it) }
+                if (newCondition) {
+                    alignedOn(newCondition) { th() }
+                } else {
+                    alignedOn(newCondition) { el() }
+                }.also {
+                    currentPath.path.forEach { _ -> stack.dealign() }
+                }
+            }
+        )
     }
 
     /**
@@ -100,12 +128,8 @@ class AggregateContext(
      * @return
      */
     fun <T> mux(condition: () -> StateFlow<Boolean>, th: () -> StateFlow<T>, el: () -> StateFlow<T>): StateFlow<T> {
-        return condition().let { conditionFlow ->
-            val thFlow = th()
-            val elFlow = el()
-            combineStates(conditionFlow, thFlow, elFlow) { c, t, e ->
-                if (c) t else e
-            }
+        return combineStates(condition(), th(), el()) { c, t, e ->
+            if (c) t else e
         }
     }
 
@@ -126,30 +150,7 @@ class AggregateContext(
             .associate { it.senderId to it.messages[path] as T }
     }
 
-    private fun <T> stateAt(path: Path, default: T): StateFlow<T> = state.getTyped(path, default)
-}
-
-/**
- * TODO.
- *
- * @param T
- * @param th
- * @param el
- * @return
- */
-fun <T> StateFlow<Boolean>.branch(th: StateFlow<T>, el: StateFlow<T>): StateFlow<T> {
-    return combineStates(this, th, el) { c, t, e ->
-        if (c) t else e
+    private fun <T> stateAt(path: Path, default: T): StateFlow<T> = mapStates(state) { state ->
+        state.getTyped(path, default)
     }
 }
-
-/**
- * TODO.
- *
- * @param T
- * @param th
- * @param el
- * @return
- */
-fun <T> StateFlow<Boolean>.branch(th: () -> StateFlow<T>, el: () -> StateFlow<T>): StateFlow<T> =
-    combineBranchStates(this, th, el)

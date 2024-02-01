@@ -1,6 +1,8 @@
 package it.unibo.collektive.reactive
 
 import it.unibo.collektive.ID
+import it.unibo.collektive.proactive.networking.OutboundMessage
+import it.unibo.collektive.state.State
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -11,6 +13,6 @@ import kotlinx.coroutines.flow.StateFlow
 data class ReactiveAggregateResult<R>(
     val localId: ID,
     val result: StateFlow<R>,
-    val toSend: ReactiveOutboundMessage,
-    val state: ReactiveState,
+    val toSend: StateFlow<OutboundMessage>,
+    val state: StateFlow<State>,
 )

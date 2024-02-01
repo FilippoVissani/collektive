@@ -21,16 +21,12 @@ class ReactiveConditionTest : StringSpec({
     val id0 = IntId(0)
     val id1 = IntId(1)
 
-    val trueFunction: (StateFlow<Field<String>>) -> StateFlow<Field<String>> = { flow ->
-        mapStates(flow) { field ->
-            field.mapWithId { _, _ -> "trueBranch" }
-        }
+    val trueFunction: (Field<String>) -> Field<String> = { field ->
+        field.mapWithId { _, _ -> "trueBranch" }
     }
 
-    val falseFunction: (StateFlow<Field<String>>) -> StateFlow<Field<String>> = { flow ->
-        mapStates(flow) { field ->
-            field.mapWithId { _, _ -> "falseBranch" }
-        }
+    val falseFunction: (Field<String>) -> Field<String> = { field ->
+        field.mapWithId { _, _ -> "falseBranch" }
     }
 
     "Final result should change if the condition changes" {

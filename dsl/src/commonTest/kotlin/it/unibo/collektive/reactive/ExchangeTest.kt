@@ -6,13 +6,11 @@ import io.kotest.matchers.shouldBe
 import it.unibo.collektive.Collektive.aggregate
 import it.unibo.collektive.IntId
 import it.unibo.collektive.field.Field
-import it.unibo.collektive.reactive.flow.extensions.mapStates
 import it.unibo.collektive.stack.Path
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 class ExchangeTest : StringSpec({
@@ -42,22 +40,16 @@ class ExchangeTest : StringSpec({
     val expectedTrue = true
     val expectedFalse = false
 
-    val increaseOrDouble: (StateFlow<Field<Int>>) -> StateFlow<Field<Int>> = { flow ->
-        mapStates(flow) { field ->
-            field.mapWithId { _, v -> if (v % 2 == 0) v + 1 else v * 2 }
-        }
+    val increaseOrDouble: (Field<Int>) -> Field<Int> = { field ->
+        field.mapWithId { _, v -> if (v % 2 == 0) v + 1 else v * 2 }
     }
 
-    val alwaysTrue: (StateFlow<Field<Boolean>>) -> StateFlow<Field<Boolean>> = { flow ->
-        mapStates(flow) { field ->
-            field.mapWithId { _, _ -> true }
-        }
+    val alwaysTrue: (Field<Boolean>) -> Field<Boolean> = { field ->
+        field.mapWithId { _, _ -> true }
     }
 
-    val alwaysFalse: (StateFlow<Field<Boolean>>) -> StateFlow<Field<Boolean>> = { flow ->
-        mapStates(flow) { field ->
-            field.mapWithId { _, _ -> false }
-        }
+    val alwaysFalse: (Field<Boolean>) -> Field<Boolean> = { field ->
+        field.mapWithId { _, _ -> false }
     }
 
     "First time exchange should return the initial value" {
@@ -76,11 +68,13 @@ class ExchangeTest : StringSpec({
                 .localValue shouldBe expected2
             aggregateResult0
                 .toSend
+                .value
                 .senderId shouldBe id0
             aggregateResult0
                 .toSend
+                .value
                 .messages
-                .mapValues { (_, v) -> v.value } shouldBe
+                .mapValues { (_, v) -> v } shouldBe
                 mapOf(
                     path1 to ReactiveSingleOutboundMessage(
                         expected2,
@@ -124,11 +118,13 @@ class ExchangeTest : StringSpec({
                 .localValue shouldBe expected2
             aggregateResult0
                 .toSend
+                .value
                 .senderId shouldBe id0
             aggregateResult0
                 .toSend
+                .value
                 .messages
-                .mapValues { (_, v) -> v.value } shouldBe
+                .mapValues { (_, v) -> v } shouldBe
                 mapOf(
                     path1 to ReactiveSingleOutboundMessage(
                         expected2,
@@ -145,11 +141,13 @@ class ExchangeTest : StringSpec({
                 .localValue shouldBe expected3
             aggregateResult1
                 .toSend
+                .value
                 .senderId shouldBe id1
             aggregateResult1
                 .toSend
+                .value
                 .messages
-                .mapValues { (_, v) -> v.value } shouldBe
+                .mapValues { (_, v) -> v } shouldBe
                 mapOf(
                     path1 to ReactiveSingleOutboundMessage(
                         expected3, mapOf((id0 to expected3), (id2 to expected7))
@@ -162,11 +160,13 @@ class ExchangeTest : StringSpec({
                 .localValue shouldBe expected6
             aggregateResult2
                 .toSend
+                .value
                 .senderId shouldBe id2
             aggregateResult2
                 .toSend
+                .value
                 .messages
-                .mapValues { (_, v) -> v.value } shouldBe
+                .mapValues { (_, v) -> v } shouldBe
                 mapOf(
                     path1 to ReactiveSingleOutboundMessage(
                         expected6,
@@ -207,11 +207,13 @@ class ExchangeTest : StringSpec({
                 .localValue shouldBe expectedTrue
             aggregateResult0
                 .toSend
+                .value
                 .senderId shouldBe id0
             aggregateResult0
                 .toSend
+                .value
                 .messages
-                .mapValues { (_, v) -> v.value } shouldBe
+                .mapValues { (_, v) -> v } shouldBe
                 mapOf(
                     truePath to ReactiveSingleOutboundMessage(
                         expectedTrue,
@@ -227,11 +229,13 @@ class ExchangeTest : StringSpec({
                 .localValue shouldBe expectedTrue
             aggregateResult1
                 .toSend
+                .value
                 .senderId shouldBe id1
             aggregateResult1
                 .toSend
+                .value
                 .messages
-                .mapValues { (_, v) -> v.value } shouldBe
+                .mapValues { (_, v) -> v } shouldBe
                 mapOf(
                     truePath to ReactiveSingleOutboundMessage(
                         expectedTrue,
@@ -271,11 +275,13 @@ class ExchangeTest : StringSpec({
                 .localValue shouldBe expectedTrue
             aggregateResult0
                 .toSend
+                .value
                 .senderId shouldBe id0
             aggregateResult0
                 .toSend
+                .value
                 .messages
-                .mapValues { (_, v) -> v.value } shouldBe
+                .mapValues { (_, v) -> v } shouldBe
                 mapOf(
                     truePath to ReactiveSingleOutboundMessage(
                         expectedTrue,
@@ -289,11 +295,13 @@ class ExchangeTest : StringSpec({
                 .localValue shouldBe expectedFalse
             aggregateResult1
                 .toSend
+                .value
                 .senderId shouldBe id1
             aggregateResult1
                 .toSend
+                .value
                 .messages
-                .mapValues { (_, v) -> v.value } shouldBe
+                .mapValues { (_, v) -> v } shouldBe
                 mapOf(
                     falsePath to ReactiveSingleOutboundMessage(
                         expectedFalse,
