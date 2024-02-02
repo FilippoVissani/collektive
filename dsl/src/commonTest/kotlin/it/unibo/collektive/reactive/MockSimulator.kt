@@ -1,5 +1,6 @@
 package it.unibo.collektive.reactive
 
+import it.unibo.collektive.proactive.networking.InboundMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,31 +28,29 @@ suspend fun <R> printResults(aggregateResult: ReactiveAggregateResult<R>) = coro
     }
 }
 
-suspend fun <R> runSimulation(simulation: Map<ReactiveAggregateResult<R>, MutableStateFlow<List<ReactiveInboundMessage>>>) = coroutineScope {
+suspend fun <R> runSimulation(simulation: Map<ReactiveAggregateResult<R>, MutableStateFlow<List<InboundMessage>>>) = coroutineScope {
     println("###################################")
     simulation.keys.forEach {
         launch(Dispatchers.Default) {
             printResults(it)
         }
     }
-
-    simulation.forEach { (aggregateResult, _) ->
-        launch(Dispatchers.Default) {
-            aggregateResult.toSend.collect { outboundMessage ->
-                // Update neighbor's channel when the device generate new message
-                simulation
-                    .filter { (neighbor, _) -> neighbor.localId != aggregateResult.localId }
-                    .forEach { (_, channel) ->
-                        channel.update { inboundMessages ->
-                            inboundMessages.filter { it.senderId != aggregateResult.localId } + outboundMessage.messages.map { (path, singleOutboundMessage) ->
-                                ReactiveInboundMessage(
-                                    aggregateResult.localId,
-                                    mapOf(path to singleOutboundMessage.overrides.getOrElse(aggregateResult.localId) { singleOutboundMessage.default })
+    simulation.forEach { (localDevice, _) ->
+        simulation
+            .filter { (neighbor, _) -> neighbor.localId != localDevice.localId }
+            .forEach { (_, neighborChannel) ->
+                launch(Dispatchers.Default) {
+                    localDevice.toSend.collect { outboundMessage ->
+                        neighborChannel.update { neighborInboundMessages ->
+                            neighborInboundMessages.filter { it.senderId != localDevice.localId } + outboundMessage.messages.map { (path, singleOutboundMessage) ->
+                                InboundMessage(
+                                    localDevice.localId,
+                                    mapOf(path to singleOutboundMessage.overrides.getOrElse(localDevice.localId) { singleOutboundMessage.default })
                                 )
                             }
                         }
                     }
+                }
             }
-        }
     }
 }

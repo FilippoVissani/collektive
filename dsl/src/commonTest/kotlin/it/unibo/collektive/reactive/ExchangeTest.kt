@@ -6,11 +6,16 @@ import io.kotest.matchers.shouldBe
 import it.unibo.collektive.Collektive.aggregate
 import it.unibo.collektive.IntId
 import it.unibo.collektive.field.Field
+import it.unibo.collektive.proactive.networking.InboundMessage
+import it.unibo.collektive.proactive.networking.OutboundMessage
+import it.unibo.collektive.proactive.networking.SingleOutboundMessage
+import it.unibo.collektive.reactive.flow.extensions.mapStates
 import it.unibo.collektive.stack.Path
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 class ExchangeTest : StringSpec({
@@ -22,8 +27,6 @@ class ExchangeTest : StringSpec({
 
     // initial values
     val initV1 = 1
-    val initV2 = 2
-    val initV3 = 3
     val trueCondition = true
     val falseCondition = false
 
@@ -34,72 +37,62 @@ class ExchangeTest : StringSpec({
 
     // expected
     val expected2 = 2
-    val expected3 = 3
-    val expected6 = 6
-    val expected7 = 7
     val expectedTrue = true
     val expectedFalse = false
 
-    val increaseOrDouble: (Field<Int>) -> Field<Int> = { field ->
-        field.mapWithId { _, v -> if (v % 2 == 0) v + 1 else v * 2 }
+    val increaseOrDouble: (StateFlow<Field<Int>>) -> StateFlow<Field<Int>> = { flow ->
+        mapStates(flow) { field ->
+            field.mapWithId { _, v -> if (v % 2 == 0) v + 1 else v * 2 }
+        }
     }
 
-    val alwaysTrue: (Field<Boolean>) -> Field<Boolean> = { field ->
-        field.mapWithId { _, _ -> true }
+    val alwaysTrue: (StateFlow<Field<Boolean>>) -> StateFlow<Field<Boolean>> = { flow ->
+        mapStates(flow) { field ->
+            field.mapWithId { _, _ -> true }
+        }
     }
 
-    val alwaysFalse: (Field<Boolean>) -> Field<Boolean> = { field ->
-        field.mapWithId { _, _ -> false }
+    val alwaysFalse: (StateFlow<Field<Boolean>>) -> StateFlow<Field<Boolean>> = { flow ->
+        mapStates(flow) { field ->
+            field.mapWithId { _, _ -> false }
+        }
     }
 
     "First time exchange should return the initial value" {
         runBlocking {
             val aggregateResult0 = aggregate(id0) {
-                exchange(initV1, increaseOrDouble)
+                val res = exchange(initV1, increaseOrDouble)
+                res.value.localValue shouldBe expected2
+                outboundMessages().value shouldBe OutboundMessage(
+                    id0,
+                    mapOf(path1 to SingleOutboundMessage(expected2, emptyMap())),
+                )
+                res
             }
             val job = launch(Dispatchers.Default) {
                 runSimulation(mapOf(aggregateResult0 to MutableStateFlow(emptyList())))
             }
             delay(100)
             job.cancelAndJoin()
-            aggregateResult0
-                .result
-                .value
-                .localValue shouldBe expected2
-            aggregateResult0
-                .toSend
-                .value
-                .senderId shouldBe id0
-            aggregateResult0
-                .toSend
-                .value
-                .messages
-                .mapValues { (_, v) -> v } shouldBe
-                mapOf(
-                    path1 to ReactiveSingleOutboundMessage(
-                        expected2,
-                        emptyMap()
-                    )
-                )
         }
     }
 
     "Exchange should work between three aligned devices" {
         runBlocking {
-            val channel0: MutableStateFlow<List<ReactiveInboundMessage>> = MutableStateFlow(emptyList())
-            val channel1: MutableStateFlow<List<ReactiveInboundMessage>> = MutableStateFlow(emptyList())
-            val channel2: MutableStateFlow<List<ReactiveInboundMessage>> = MutableStateFlow(emptyList())
+            val channel0: MutableStateFlow<List<InboundMessage>> = MutableStateFlow(emptyList())
+            val channel1: MutableStateFlow<List<InboundMessage>> = MutableStateFlow(emptyList())
+            val channel2: MutableStateFlow<List<InboundMessage>> = MutableStateFlow(emptyList())
 
             val aggregateResult0 = aggregate(id0, channel0) {
-                exchange(initV1, increaseOrDouble)
+                exchange(trueCondition, alwaysTrue)
             }
 
             val aggregateResult1 = aggregate(id1, channel1) {
-                exchange(initV2, increaseOrDouble)
+                exchange(trueCondition, alwaysTrue)
             }
 
             val aggregateResult2 = aggregate(id2, channel2) {
-                exchange(initV3, increaseOrDouble)
+                exchange(trueCondition, alwaysTrue)
             }
             val job = launch(Dispatchers.Default) {
                 runSimulation(
@@ -115,7 +108,7 @@ class ExchangeTest : StringSpec({
             aggregateResult0
                 .result
                 .value
-                .localValue shouldBe expected2
+                .localValue shouldBe expectedTrue
             aggregateResult0
                 .toSend
                 .value
@@ -126,11 +119,11 @@ class ExchangeTest : StringSpec({
                 .messages
                 .mapValues { (_, v) -> v } shouldBe
                 mapOf(
-                    path1 to ReactiveSingleOutboundMessage(
-                        expected2,
+                    path1 to SingleOutboundMessage(
+                        expectedTrue,
                         mapOf(
-                            (id2 to expected7),
-                            (id1 to expected6),
+                            (id2 to expectedTrue),
+                            (id1 to expectedTrue),
                         )
                     )
                 )
@@ -138,7 +131,7 @@ class ExchangeTest : StringSpec({
             aggregateResult1
                 .result
                 .value
-                .localValue shouldBe expected3
+                .localValue shouldBe expectedTrue
             aggregateResult1
                 .toSend
                 .value
@@ -149,15 +142,15 @@ class ExchangeTest : StringSpec({
                 .messages
                 .mapValues { (_, v) -> v } shouldBe
                 mapOf(
-                    path1 to ReactiveSingleOutboundMessage(
-                        expected3, mapOf((id0 to expected3), (id2 to expected7))
+                    path1 to SingleOutboundMessage(
+                        expectedTrue, mapOf((id0 to expectedTrue), (id2 to expectedTrue))
                     )
                 )
 
             aggregateResult2
                 .result
                 .value
-                .localValue shouldBe expected6
+                .localValue shouldBe expectedTrue
             aggregateResult2
                 .toSend
                 .value
@@ -168,11 +161,11 @@ class ExchangeTest : StringSpec({
                 .messages
                 .mapValues { (_, v) -> v } shouldBe
                 mapOf(
-                    path1 to ReactiveSingleOutboundMessage(
-                        expected6,
+                    path1 to SingleOutboundMessage(
+                        expectedTrue,
                         mapOf(
-                            (id1 to expected6),
-                            (id0 to expected3),
+                            (id1 to expectedTrue),
+                            (id0 to expectedTrue),
                         )
                     )
                 )
@@ -181,8 +174,8 @@ class ExchangeTest : StringSpec({
 
     "Devices should be aligned" {
         runBlocking {
-            val channel0: MutableStateFlow<List<ReactiveInboundMessage>> = MutableStateFlow(emptyList())
-            val channel1: MutableStateFlow<List<ReactiveInboundMessage>> = MutableStateFlow(emptyList())
+            val channel0: MutableStateFlow<List<InboundMessage>> = MutableStateFlow(emptyList())
+            val channel1: MutableStateFlow<List<InboundMessage>> = MutableStateFlow(emptyList())
 
             val aggregateResult0 = aggregate(id0, channel0) {
                 if (trueCondition) exchange(true, alwaysTrue) else exchange(false, alwaysFalse)
@@ -215,7 +208,7 @@ class ExchangeTest : StringSpec({
                 .messages
                 .mapValues { (_, v) -> v } shouldBe
                 mapOf(
-                    truePath to ReactiveSingleOutboundMessage(
+                    truePath to SingleOutboundMessage(
                         expectedTrue,
                         mapOf(
                             (id1 to expectedTrue),
@@ -237,7 +230,7 @@ class ExchangeTest : StringSpec({
                 .messages
                 .mapValues { (_, v) -> v } shouldBe
                 mapOf(
-                    truePath to ReactiveSingleOutboundMessage(
+                    truePath to SingleOutboundMessage(
                         expectedTrue,
                         mapOf(
                             (id0 to expectedTrue),
@@ -249,8 +242,8 @@ class ExchangeTest : StringSpec({
 
     "Devices should not be aligned" {
         runBlocking {
-            val channel0: MutableStateFlow<List<ReactiveInboundMessage>> = MutableStateFlow(emptyList())
-            val channel1: MutableStateFlow<List<ReactiveInboundMessage>> = MutableStateFlow(emptyList())
+            val channel0: MutableStateFlow<List<InboundMessage>> = MutableStateFlow(emptyList())
+            val channel1: MutableStateFlow<List<InboundMessage>> = MutableStateFlow(emptyList())
 
             val aggregateResult0 = aggregate(id0, channel0) {
                 if (trueCondition) exchange(true, alwaysTrue) else exchange(false, alwaysFalse)
@@ -283,7 +276,7 @@ class ExchangeTest : StringSpec({
                 .messages
                 .mapValues { (_, v) -> v } shouldBe
                 mapOf(
-                    truePath to ReactiveSingleOutboundMessage(
+                    truePath to SingleOutboundMessage(
                         expectedTrue,
                         emptyMap(),
                     )
@@ -303,7 +296,7 @@ class ExchangeTest : StringSpec({
                 .messages
                 .mapValues { (_, v) -> v } shouldBe
                 mapOf(
-                    falsePath to ReactiveSingleOutboundMessage(
+                    falsePath to SingleOutboundMessage(
                         expectedFalse,
                         emptyMap(),
                     )

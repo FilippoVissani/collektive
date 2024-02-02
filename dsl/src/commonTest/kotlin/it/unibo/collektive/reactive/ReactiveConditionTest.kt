@@ -5,6 +5,7 @@ import io.kotest.core.spec.style.StringSpec
 import it.unibo.collektive.Collektive
 import it.unibo.collektive.IntId
 import it.unibo.collektive.field.Field
+import it.unibo.collektive.proactive.networking.InboundMessage
 import it.unibo.collektive.reactive.flow.extensions.combineStates
 import it.unibo.collektive.reactive.flow.extensions.mapStates
 import kotlinx.coroutines.Dispatchers
@@ -21,18 +22,22 @@ class ReactiveConditionTest : StringSpec({
     val id0 = IntId(0)
     val id1 = IntId(1)
 
-    val trueFunction: (Field<String>) -> Field<String> = { field ->
-        field.mapWithId { _, _ -> "trueBranch" }
+    val trueFunction: (StateFlow<Field<String>>) -> StateFlow<Field<String>> = { flow ->
+        mapStates(flow) { field ->
+            field.mapWithId { _, _ -> "trueBranch" }
+        }
     }
 
-    val falseFunction: (Field<String>) -> Field<String> = { field ->
-        field.mapWithId { _, _ -> "falseBranch" }
+    val falseFunction: (StateFlow<Field<String>>) -> StateFlow<Field<String>> = { flow ->
+        mapStates(flow) { field ->
+            field.mapWithId { _, _ -> "falseBranch" }
+        }
     }
 
     "Final result should change if the condition changes" {
         runBlocking {
-            val channel0: MutableStateFlow<List<ReactiveInboundMessage>> = MutableStateFlow(emptyList())
-            val channel1: MutableStateFlow<List<ReactiveInboundMessage>> = MutableStateFlow(emptyList())
+            val channel0: MutableStateFlow<List<InboundMessage>> = MutableStateFlow(emptyList())
+            val channel1: MutableStateFlow<List<InboundMessage>> = MutableStateFlow(emptyList())
             val reactiveBoolean = MutableStateFlow(true)
 
             val aggregateResult0 = Collektive.aggregate(id0, channel0) {
@@ -62,8 +67,8 @@ class ReactiveConditionTest : StringSpec({
 
     "Devices with different conditions should be aligned" {
         runBlocking {
-            val channel0: MutableStateFlow<List<ReactiveInboundMessage>> = MutableStateFlow(emptyList())
-            val channel1: MutableStateFlow<List<ReactiveInboundMessage>> = MutableStateFlow(emptyList())
+            val channel0: MutableStateFlow<List<InboundMessage>> = MutableStateFlow(emptyList())
+            val channel1: MutableStateFlow<List<InboundMessage>> = MutableStateFlow(emptyList())
             val reactiveBoolean0 = MutableStateFlow(true)
             val reactiveBoolean1 = MutableStateFlow(false)
 
