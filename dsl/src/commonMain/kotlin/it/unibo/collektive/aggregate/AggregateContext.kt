@@ -2,9 +2,9 @@ package it.unibo.collektive.aggregate
 
 import it.unibo.collektive.ID
 import it.unibo.collektive.field.Field
+import it.unibo.collektive.proactive.networking.InboundMessage
 import it.unibo.collektive.proactive.networking.OutboundMessage
 import it.unibo.collektive.proactive.networking.SingleOutboundMessage
-import it.unibo.collektive.reactive.ReactiveInboundMessage
 import it.unibo.collektive.reactive.flow.extensions.combineStates
 import it.unibo.collektive.reactive.flow.extensions.flattenConcat
 import it.unibo.collektive.reactive.flow.extensions.mapStates
@@ -28,7 +28,7 @@ import kotlinx.coroutines.flow.update
  */
 class AggregateContext(
     private val localId: ID,
-    private val reactiveInboundMessages: MutableStateFlow<List<ReactiveInboundMessage>>,
+    private val reactiveInboundMessages: MutableStateFlow<List<InboundMessage>>,
 ) {
     private val stack = Stack<Any>()
     private val state: MutableStateFlow<State> = MutableStateFlow(emptyMap())
@@ -45,17 +45,6 @@ class AggregateContext(
      *
      */
     fun outboundMessages() = outboundMessages.asStateFlow()
-
-    /**
-     * TODO.
-     *
-     * @param reactiveInboundMessage
-     */
-    fun receiveMessage(reactiveInboundMessage: ReactiveInboundMessage) {
-        reactiveInboundMessages.update { messages ->
-            messages.filter { it.senderId != reactiveInboundMessage.senderId } + reactiveInboundMessage
-        }
-    }
 
     private fun <T> newField(localValue: T, others: Map<ID, T>): Field<T> = Field(localId, localValue, others)
 
@@ -78,19 +67,18 @@ class AggregateContext(
      * network and the result of the computation passed as relative local values.
      */
     @OptIn(DelicateCoroutinesApi::class)
-    fun <T> exchange(initial: T, body: (Field<T>) -> Field<T>): StateFlow<Field<T>> {
+    fun <T> exchange(initial: T, body: (StateFlow<Field<T>>) -> StateFlow<Field<T>>): StateFlow<Field<T>> {
         val messages = messagesAt<T>(stack.currentPath())
         val previous = stateAt(stack.currentPath(), initial)
         val subject = mapStates(messages) { m -> newField(previous.value, m) }
         val alignmentPath = stack.currentPath()
-        subject.onEach { subjectField ->
-            body(subjectField).also { field ->
+        return body(subject).also { flow ->
+            flow.onEach { field ->
                 val message = SingleOutboundMessage(field.localValue, field.excludeSelf())
                 outboundMessages.update { it.copy(messages = it.messages + (alignmentPath to message)) }
                 state.update { it + (alignmentPath to field.localValue) }
-            }
-        }.launchIn(GlobalScope)
-        return mapStates(subject) { body(it) }
+            }.launchIn(GlobalScope)
+        }
     }
 
     /**
