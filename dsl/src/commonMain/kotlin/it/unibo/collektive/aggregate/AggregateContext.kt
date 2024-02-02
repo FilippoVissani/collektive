@@ -81,7 +81,7 @@ class AggregateContext(
     fun <T> exchange(initial: T, body: (Field<T>) -> Field<T>): StateFlow<Field<T>> {
         val messages = messagesAt<T>(stack.currentPath())
         val previous = stateAt(stack.currentPath(), initial)
-        val subject = combineStates(messages, previous) { m, p -> newField(p, m) }
+        val subject = mapStates(messages) { m -> newField(previous.value, m) }
         val alignmentPath = stack.currentPath()
         subject.onEach { subjectField ->
             body(subjectField).also { field ->
@@ -104,8 +104,13 @@ class AggregateContext(
      */
     fun <T> branch(condition: () -> StateFlow<Boolean>, th: () -> StateFlow<T>, el: () -> StateFlow<T>): StateFlow<T> {
         val currentPath = stack.currentPath()
+        val conditionResult = condition()
         return flattenConcat(
-            mapStates(condition()) { newCondition ->
+            mapStates(conditionResult) { newCondition ->
+                outboundMessages.update {
+                    it.copy(messages = it.messages.filterNot { (p, _) -> p.path.containsAll(currentPath.path) })
+                }
+                state.update { it.filterNot { (p, _) -> p.path.containsAll(currentPath.path) } }
                 currentPath.path.forEach { stack.alignRaw(it) }
                 if (newCondition) {
                     alignedOn(newCondition) { th() }

@@ -43,9 +43,7 @@ suspend fun <R> runSimulation(simulation: Map<ReactiveAggregateResult<R>, Mutabl
                     .filter { (neighbor, _) -> neighbor.localId != aggregateResult.localId }
                     .forEach { (_, channel) ->
                         channel.update { inboundMessages ->
-                            inboundMessages.filter {
-                                it.senderId != aggregateResult.localId
-                            } + outboundMessage.messages.map { (path, singleOutboundMessage) ->
+                            inboundMessages.filter { it.senderId != aggregateResult.localId } + outboundMessage.messages.map { (path, singleOutboundMessage) ->
                                 ReactiveInboundMessage(
                                     aggregateResult.localId,
                                     mapOf(path to singleOutboundMessage.overrides.getOrElse(aggregateResult.localId) { singleOutboundMessage.default })
