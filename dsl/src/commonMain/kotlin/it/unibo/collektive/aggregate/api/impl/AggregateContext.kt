@@ -14,6 +14,7 @@ import it.unibo.collektive.networking.SingleOutboundMessage
 import it.unibo.collektive.path.Path
 import it.unibo.collektive.state.State
 import it.unibo.collektive.state.impl.getTyped
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Context for managing aggregate computation.
@@ -86,6 +87,21 @@ internal class AggregateContext<ID : Any>(
     override fun <R> alignedOn(pivot: Any?, body: () -> R): R {
         stack.alignRaw(pivot)
         return body().also { stack.dealign() }
+    }
+
+    override fun <T> rBranch(
+        condition: () -> StateFlow<Boolean>,
+        th: () -> StateFlow<T>,
+        el: () -> StateFlow<T>,
+    ): StateFlow<T> {
+        TODO("Not yet implemented")
+    }
+
+    override fun <T> rExchange(
+        initial: T,
+        body: (StateFlow<Field<ID, T>>) -> StateFlow<Field<ID, T>>,
+    ): StateFlow<Field<ID, T>> {
+        TODO("Not yet implemented")
     }
 
     @Suppress("UNCHECKED_CAST")
