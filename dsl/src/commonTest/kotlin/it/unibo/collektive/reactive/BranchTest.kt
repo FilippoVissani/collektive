@@ -38,7 +38,7 @@ class BranchTest : StringSpec({
         }
     }
 
-    suspend fun runAggregateProgram(
+    suspend fun runSingleBranchProgram(
         initialCondition0: Boolean,
         initialCondition1: Boolean,
         finalCondition0: Boolean = initialCondition0,
@@ -86,7 +86,7 @@ class BranchTest : StringSpec({
 
     "Devices with same condition should be aligned" {
         runBlocking {
-            runAggregateProgram(
+            runSingleBranchProgram(
                 initialCondition0 = true,
                 initialCondition1 = true,
                 assertion0 = { aggregateResult -> aggregateResult.result.value.toMap() shouldBe mapOf(IntId(0) to trueBranch, IntId(1) to trueBranch) },
@@ -97,7 +97,7 @@ class BranchTest : StringSpec({
 
     "Devices with different conditions should not be aligned" {
         runBlocking {
-            runAggregateProgram(
+            runSingleBranchProgram(
                 initialCondition0 = true,
                 initialCondition1 = false,
                 assertion0 = { aggregateResult -> aggregateResult.result.value.toMap() shouldBe mapOf(IntId(0) to trueBranch) },
@@ -108,7 +108,7 @@ class BranchTest : StringSpec({
 
     "If the condition becomes the same the two devices should align" {
         runBlocking {
-            runAggregateProgram(
+            runSingleBranchProgram(
                 initialCondition0 = true,
                 initialCondition1 = false,
                 finalCondition0 = true,
@@ -121,7 +121,7 @@ class BranchTest : StringSpec({
 
     "If the condition becomes different the two devices should not align" {
         runBlocking {
-            runAggregateProgram(
+            runSingleBranchProgram(
                 initialCondition0 = true,
                 initialCondition1 = true,
                 finalCondition0 = true,
@@ -130,5 +130,68 @@ class BranchTest : StringSpec({
                 assertion1 = { aggregateResult -> aggregateResult.result.value.toMap() shouldBe mapOf(IntId(1) to falseBranch) },
             )
         }
+    }
+
+    "Multiple nested Branch should work" {
+        val channel0: MutableStateFlow<List<InboundMessage>> = MutableStateFlow(emptyList())
+        val channel1: MutableStateFlow<List<InboundMessage>> = MutableStateFlow(emptyList())
+        val reactiveBoolean0 = MutableStateFlow(true)
+        val reactiveBoolean1 = MutableStateFlow(true)
+
+        val aggregateResult0 = Collektive.aggregate(id0, channel0) {
+            branch(
+                { reactiveBoolean0 },
+                {
+                    branch(
+                        { reactiveBoolean0 },
+                        { exchange("initial", trueFunction) },
+                        { exchange("initial", falseFunction) }
+                    )
+                },
+                {
+                    branch(
+                        { reactiveBoolean0 },
+                        { exchange("initial", trueFunction) },
+                        { exchange("initial", falseFunction) }
+                    )
+                },
+            )
+        }
+
+        val aggregateResult1 = Collektive.aggregate(id1, channel1) {
+            branch(
+                { reactiveBoolean1 },
+                {
+                    branch(
+                        { reactiveBoolean1 },
+                        { exchange("initial", trueFunction) },
+                        { exchange("initial", falseFunction) }
+                    )
+                },
+                {
+                    branch(
+                        { reactiveBoolean1 },
+                        { exchange("initial", trueFunction) },
+                        { exchange("initial", falseFunction) }
+                    )
+                },
+            )
+        }
+
+        val job = launch(Dispatchers.Default) {
+            runSimulation(
+                mapOf(
+                    aggregateResult0 to channel0,
+                    aggregateResult1 to channel1,
+                )
+            )
+        }
+        delay(200)
+        reactiveBoolean0.update { false }
+        reactiveBoolean1.update { false }
+        delay(200)
+        job.cancelAndJoin()
+        aggregateResult0.result.value.toMap() shouldBe mapOf(IntId(0) to falseBranch, IntId(1) to falseBranch)
+        aggregateResult1.result.value.toMap() shouldBe mapOf(IntId(0) to falseBranch, IntId(1) to falseBranch)
     }
 })
