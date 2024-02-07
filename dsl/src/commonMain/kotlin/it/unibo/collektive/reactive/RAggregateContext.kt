@@ -78,20 +78,48 @@ class RAggregateContext<ID : Any>(
         val conditionResult = condition()
         return flattenConcat(
             mapStates(conditionResult) { newCondition ->
-                rOutboundMessages.update {
-                    it.copy(messages = it.messages.filterNot { (p, _) -> p.tokens().containsAll(currentPath.tokens()) })
-                }
-                rState.update { it.filterNot { (p, _) -> p.tokens().containsAll(currentPath.tokens()) } }
                 currentPath.tokens().forEach { stack.alignRaw(it) }
                 if (newCondition) {
+                    // Deletes false branch from messages and state
+                    deleteOppositeBranch(newCondition)
                     alignedOn(newCondition) { th() }
                 } else {
+                    // Deletes true branch from messages and state
+                    deleteOppositeBranch(newCondition)
                     alignedOn(newCondition) { el() }
                 }.also {
                     currentPath.tokens().forEach { _ -> stack.dealign() }
                 }
             },
         )
+    }
+
+    private fun deleteOppositeBranch(condition: Boolean) {
+        alignedOn(!condition) {
+            val oppositePath = stack.currentPath()
+            rOutboundMessages.update {
+                it.copy(messages = it.messages.filterNot { (p, _) -> isSublist(p.tokens(), oppositePath.tokens()) })
+            }
+            rState.update { it.filterNot { (p, _) -> isSublist(p.tokens(), oppositePath.tokens()) } }
+        }
+    }
+
+    private fun <T> isSublist(listX: List<T>, listY: List<T>): Boolean {
+        // Iterate over each element in list A
+        for (i in 0..listX.size - listY.size) {
+            var match = true
+            // Check if sublist starting from index i matches list B
+            for (j in listY.indices) {
+                if (listX[i + j] != listY[j]) {
+                    match = false
+                    break
+                }
+            }
+            // If all elements in B match sublist in A, return true
+            if (match) return true
+        }
+        // If no sublist in A matches B, return false
+        return false
     }
 
     private fun <T> newField(localValue: T, others: Map<ID, T>): Field<ID, T> = Field(localId, localValue, others)
