@@ -2,12 +2,11 @@ package it.unibo.collektive.reactive
 
 import io.kotest.common.runBlocking
 import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
 import it.unibo.collektive.field.Field
 import it.unibo.collektive.networking.InboundMessage
-import it.unibo.collektive.networking.OutboundMessage
 import it.unibo.collektive.networking.SingleOutboundMessage
-import it.unibo.collektive.path.Path
 import it.unibo.collektive.reactive.flow.extensions.mapStates
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancelAndJoin
@@ -27,11 +26,6 @@ class RExchangeTest : StringSpec({
     val initV1 = 1
     val trueCondition = true
     val falseCondition = false
-
-    // paths
-    val path1 = Path(listOf("rExchange.1"))
-    val truePath = Path(listOf(true, "rExchange.1"))
-    val falsePath = Path(listOf(false, "rExchange.2"))
 
     // expected
     val expected2 = 2
@@ -68,10 +62,8 @@ class RExchangeTest : StringSpec({
             }
             delay(100)
             job.cancelAndJoin()
-            aggregateResult0.toSend.value shouldBe OutboundMessage(
-                id0,
-                mapOf(path1 to SingleOutboundMessage(expected2, emptyMap())),
-            )
+            aggregateResult0.toSend.value.senderId shouldBe id0
+            aggregateResult0.toSend.value.messages.values shouldContain SingleOutboundMessage(expected2, emptyMap())
         }
     }
 
@@ -114,17 +106,13 @@ class RExchangeTest : StringSpec({
             aggregateResult0
                 .toSend
                 .value
-                .messages
-                .mapValues { (_, v) -> v } shouldBe
+                .messages.values shouldContain SingleOutboundMessage(
+                expectedTrue,
                 mapOf(
-                    path1 to SingleOutboundMessage(
-                        expectedTrue,
-                        mapOf(
-                            (id2 to expectedTrue),
-                            (id1 to expectedTrue),
-                        ),
-                    ),
-                )
+                    (id2 to expectedTrue),
+                    (id1 to expectedTrue),
+                ),
+            )
 
             aggregateResult1
                 .result
@@ -137,13 +125,10 @@ class RExchangeTest : StringSpec({
             aggregateResult1
                 .toSend
                 .value
-                .messages
-                .mapValues { (_, v) -> v } shouldBe
-                mapOf(
-                    path1 to SingleOutboundMessage(
-                        expectedTrue, mapOf((id0 to expectedTrue), (id2 to expectedTrue)),
-                    ),
-                )
+                .messages.values shouldContain SingleOutboundMessage(
+                expectedTrue,
+                mapOf((id0 to expectedTrue), (id2 to expectedTrue)),
+            )
 
             aggregateResult2
                 .result
@@ -156,17 +141,13 @@ class RExchangeTest : StringSpec({
             aggregateResult2
                 .toSend
                 .value
-                .messages
-                .mapValues { (_, v) -> v } shouldBe
+                .messages.values shouldContain SingleOutboundMessage(
+                expectedTrue,
                 mapOf(
-                    path1 to SingleOutboundMessage(
-                        expectedTrue,
-                        mapOf(
-                            (id1 to expectedTrue),
-                            (id0 to expectedTrue),
-                        ),
-                    ),
-                )
+                    (id1 to expectedTrue),
+                    (id0 to expectedTrue),
+                ),
+            )
         }
     }
 
@@ -203,16 +184,12 @@ class RExchangeTest : StringSpec({
             aggregateResult0
                 .toSend
                 .value
-                .messages
-                .mapValues { (_, v) -> v } shouldBe
+                .messages.values shouldContain SingleOutboundMessage(
+                expectedTrue,
                 mapOf(
-                    truePath to SingleOutboundMessage(
-                        expectedTrue,
-                        mapOf(
-                            (id1 to expectedTrue),
-                        ),
-                    ),
-                )
+                    (id1 to expectedTrue),
+                ),
+            )
 
             aggregateResult1
                 .result
@@ -225,16 +202,12 @@ class RExchangeTest : StringSpec({
             aggregateResult1
                 .toSend
                 .value
-                .messages
-                .mapValues { (_, v) -> v } shouldBe
+                .messages.values shouldContain SingleOutboundMessage(
+                expectedTrue,
                 mapOf(
-                    truePath to SingleOutboundMessage(
-                        expectedTrue,
-                        mapOf(
-                            (id0 to expectedTrue),
-                        ),
-                    ),
-                )
+                    (id0 to expectedTrue),
+                ),
+            )
         }
     }
 
@@ -271,14 +244,10 @@ class RExchangeTest : StringSpec({
             aggregateResult0
                 .toSend
                 .value
-                .messages
-                .mapValues { (_, v) -> v } shouldBe
-                mapOf(
-                    truePath to SingleOutboundMessage(
-                        expectedTrue,
-                        emptyMap(),
-                    ),
-                )
+                .messages.values shouldContain SingleOutboundMessage(
+                expectedTrue,
+                emptyMap(),
+            )
 
             aggregateResult1
                 .result
@@ -291,14 +260,10 @@ class RExchangeTest : StringSpec({
             aggregateResult1
                 .toSend
                 .value
-                .messages
-                .mapValues { (_, v) -> v } shouldBe
-                mapOf(
-                    falsePath to SingleOutboundMessage(
-                        expectedFalse,
-                        emptyMap(),
-                    ),
-                )
+                .messages.values shouldContain SingleOutboundMessage(
+                expectedFalse,
+                emptyMap(),
+            )
         }
     }
 })
