@@ -22,7 +22,7 @@ suspend fun <ID : Any, R> printResults(aggregateResult: RAggregateResult<ID, R>)
 
     launch(Dispatchers.Default) {
         aggregateResult.toSend.collect {
-            println("${aggregateResult.localId} -> message: $it")
+            println("${aggregateResult.localId} -> toSend: $it")
         }
     }
 }
