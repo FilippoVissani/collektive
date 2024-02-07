@@ -2,9 +2,11 @@ package it.unibo.collektive.reactive
 
 import io.kotest.common.runBlocking
 import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
 import it.unibo.collektive.field.Field
 import it.unibo.collektive.networking.InboundMessage
+import it.unibo.collektive.networking.SingleOutboundMessage
 import it.unibo.collektive.reactive.flow.extensions.mapStates
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancelAndJoin
@@ -12,6 +14,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -19,7 +22,7 @@ class RBranchTest : StringSpec({
 
     // device ids
     val id0 = 0
-    val id1 = 0
+    val id1 = 1
 
     val trueBranch = "trueBranch"
     val falseBranch = "falseBranch"
@@ -51,7 +54,7 @@ class RBranchTest : StringSpec({
 
         val aggregateResult0 = RCollektive.aggregate(id0, channel0) {
             rBranch(
-                { reactiveBoolean0 },
+                { reactiveBoolean0.asStateFlow() },
                 { rExchange("initial", trueFunction) },
                 { rExchange("initial", falseFunction) },
             )
@@ -59,7 +62,7 @@ class RBranchTest : StringSpec({
 
         val aggregateResult1 = RCollektive.aggregate(id1, channel1) {
             rBranch(
-                { reactiveBoolean1 },
+                { reactiveBoolean1.asStateFlow() },
                 { rExchange("initial", trueFunction) },
                 { rExchange("initial", falseFunction) },
             )
@@ -88,15 +91,17 @@ class RBranchTest : StringSpec({
                 initialCondition0 = true,
                 initialCondition1 = true,
                 assertion0 = { aggregateResult ->
-                    aggregateResult.result.value.toMap() shouldBe mapOf(
-                        id0 to trueBranch,
-                        id1 to trueBranch,
+                    aggregateResult.result.value.toMap() shouldBe mapOf(id0 to trueBranch, id1 to trueBranch)
+                    aggregateResult.toSend.value.senderId shouldBe id0
+                    aggregateResult.toSend.value.messages.values shouldContain SingleOutboundMessage(
+                        trueBranch, mapOf(id1 to trueBranch),
                     )
                 },
                 assertion1 = { aggregateResult ->
-                    aggregateResult.result.value.toMap() shouldBe mapOf(
-                        id0 to trueBranch,
-                        id1 to trueBranch,
+                    aggregateResult.result.value.toMap() shouldBe mapOf(id0 to trueBranch, id1 to trueBranch)
+                    aggregateResult.toSend.value.senderId shouldBe id1
+                    aggregateResult.toSend.value.messages.values shouldContain SingleOutboundMessage(
+                        trueBranch, mapOf(id0 to trueBranch),
                     )
                 },
             )
@@ -110,9 +115,17 @@ class RBranchTest : StringSpec({
                 initialCondition1 = false,
                 assertion0 = { aggregateResult ->
                     aggregateResult.result.value.toMap() shouldBe mapOf(id0 to trueBranch)
+                    aggregateResult.toSend.value.senderId shouldBe id0
+                    aggregateResult.toSend.value.messages.values shouldContain SingleOutboundMessage(
+                        trueBranch, emptyMap(),
+                    )
                 },
                 assertion1 = { aggregateResult ->
                     aggregateResult.result.value.toMap() shouldBe mapOf(id1 to falseBranch)
+                    aggregateResult.toSend.value.senderId shouldBe id1
+                    aggregateResult.toSend.value.messages.values shouldContain SingleOutboundMessage(
+                        falseBranch, emptyMap(),
+                    )
                 },
             )
         }
@@ -130,11 +143,19 @@ class RBranchTest : StringSpec({
                         id0 to trueBranch,
                         id1 to trueBranch,
                     )
+                    aggregateResult.toSend.value.senderId shouldBe id0
+                    aggregateResult.toSend.value.messages.values shouldContain SingleOutboundMessage(
+                        trueBranch, mapOf(id1 to trueBranch),
+                    )
                 },
                 assertion1 = { aggregateResult ->
                     aggregateResult.result.value.toMap() shouldBe mapOf(
                         id0 to trueBranch,
                         id1 to trueBranch,
+                    )
+                    aggregateResult.toSend.value.senderId shouldBe id1
+                    aggregateResult.toSend.value.messages.values shouldContain SingleOutboundMessage(
+                        trueBranch, mapOf(id0 to trueBranch),
                     )
                 },
             )
@@ -150,9 +171,17 @@ class RBranchTest : StringSpec({
                 finalCondition1 = false,
                 assertion0 = { aggregateResult ->
                     aggregateResult.result.value.toMap() shouldBe mapOf(id0 to trueBranch)
+                    aggregateResult.toSend.value.senderId shouldBe id0
+                    aggregateResult.toSend.value.messages.values shouldContain SingleOutboundMessage(
+                        trueBranch, emptyMap(),
+                    )
                 },
                 assertion1 = { aggregateResult ->
                     aggregateResult.result.value.toMap() shouldBe mapOf(id1 to falseBranch)
+                    aggregateResult.toSend.value.senderId shouldBe id1
+                    aggregateResult.toSend.value.messages.values shouldContain SingleOutboundMessage(
+                        falseBranch, emptyMap(),
+                    )
                 },
             )
         }
