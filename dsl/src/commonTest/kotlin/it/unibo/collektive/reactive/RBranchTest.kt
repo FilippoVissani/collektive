@@ -191,21 +191,23 @@ class RBranchTest : StringSpec({
         val channel0: MutableStateFlow<List<InboundMessage<Int>>> = MutableStateFlow(emptyList())
         val channel1: MutableStateFlow<List<InboundMessage<Int>>> = MutableStateFlow(emptyList())
         val reactiveBoolean0 = MutableStateFlow(true)
-        val reactiveBoolean1 = MutableStateFlow(true)
+        val reactiveBoolean1 = MutableStateFlow(false)
+        val reactiveBoolean2 = MutableStateFlow(true)
+        val reactiveBoolean3 = MutableStateFlow(true)
 
         val aggregateResult0 = RCollektive.aggregate(id0, channel0) {
             rBranch(
                 { reactiveBoolean0 },
                 {
                     rBranch(
-                        { reactiveBoolean0 },
+                        { reactiveBoolean1 },
                         { rExchange("initial", trueFunction) },
                         { rExchange("initial", falseFunction) },
                     )
                 },
                 {
                     rBranch(
-                        { reactiveBoolean0 },
+                        { reactiveBoolean1 },
                         { rExchange("initial", trueFunction) },
                         { rExchange("initial", falseFunction) },
                     )
@@ -215,17 +217,17 @@ class RBranchTest : StringSpec({
 
         val aggregateResult1 = RCollektive.aggregate(id1, channel1) {
             rBranch(
-                { reactiveBoolean1 },
+                { reactiveBoolean2 },
                 {
                     rBranch(
-                        { reactiveBoolean1 },
+                        { reactiveBoolean3 },
                         { rExchange("initial", trueFunction) },
                         { rExchange("initial", falseFunction) },
                     )
                 },
                 {
                     rBranch(
-                        { reactiveBoolean1 },
+                        { reactiveBoolean3 },
                         { rExchange("initial", trueFunction) },
                         { rExchange("initial", falseFunction) },
                     )
@@ -242,11 +244,10 @@ class RBranchTest : StringSpec({
             )
         }
         delay(200)
-        reactiveBoolean0.update { false }
-        reactiveBoolean1.update { false }
+        reactiveBoolean1.update { true }
         delay(200)
         job.cancelAndJoin()
-        aggregateResult0.result.value.toMap() shouldBe mapOf(id0 to falseBranch, id1 to falseBranch)
-        aggregateResult1.result.value.toMap() shouldBe mapOf(id0 to falseBranch, id1 to falseBranch)
+        aggregateResult0.result.value.toMap() shouldBe mapOf(id0 to trueBranch, id1 to trueBranch)
+        aggregateResult1.result.value.toMap() shouldBe mapOf(id0 to trueBranch, id1 to trueBranch)
     }
 })
