@@ -8,14 +8,9 @@ import it.unibo.collektive.networking.InboundMessage
 import it.unibo.collektive.networking.Network
 import it.unibo.collektive.networking.ReactiveNetwork
 import it.unibo.collektive.state.State
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.cancelAndJoin
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 
 /**
  * Create a Collektive device with a specific [localId] and a [network] to manage incoming and outgoing messages,
@@ -91,16 +86,16 @@ class Collektive<ID : Any, R>(
         /**
          * TODO.
          */
-        fun <R> aggregate(
+        fun <ID : Any, R> aggregate(
             localId: ID,
-            inbound: StateFlow<Iterable<InboundMessage>>,
-            compute: AggregateContext.() -> R,
-        ): StateFlow<AggregateResult<R>> {
+            inbound: StateFlow<Iterable<InboundMessage<ID>>>,
+            compute: Aggregate<ID>.() -> R,
+        ): StateFlow<AggregateResult<ID, R>> {
             val states = MutableStateFlow<State>(emptyMap())
             val contextFlow = mapStates(inbound) {
                 AggregateContext(localId, it, states.value)
             }
-            val result: StateFlow<AggregateResult<R>> = mapStates(contextFlow) { aggregateContext ->
+            val result: StateFlow<AggregateResult<ID, R>> = mapStates(contextFlow) { aggregateContext ->
                 aggregateContext.run {
                     val aggregateResult = AggregateResult(localId, compute(), messagesToSend(), newState())
                     states.update { aggregateResult.newState }
@@ -113,16 +108,16 @@ class Collektive<ID : Any, R>(
         /**
          * TODO.
          */
-        fun <R> aggregate(
+        fun <ID : Any, R> aggregate(
             localId: ID,
-            network: ReactiveNetwork,
-            compute: AggregateContext.() -> R,
-        ): StateFlow<AggregateResult<R>> {
+            network: ReactiveNetwork<ID>,
+            compute: Aggregate<ID>.() -> R,
+        ): StateFlow<AggregateResult<ID, R>> {
             val states = MutableStateFlow<State>(emptyMap())
             val contextFlow = mapStates(network.read()) {
                 AggregateContext(localId, it, states.value)
             }
-            val result: StateFlow<AggregateResult<R>> = mapStates(contextFlow) { aggregateContext ->
+            val result: StateFlow<AggregateResult<ID, R>> = mapStates(contextFlow) { aggregateContext ->
                 aggregateContext.run {
                     val aggregateResult = AggregateResult(localId, compute(), messagesToSend(), newState())
                     states.update { aggregateResult.newState }

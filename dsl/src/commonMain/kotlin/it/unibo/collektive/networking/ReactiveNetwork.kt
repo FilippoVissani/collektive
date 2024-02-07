@@ -6,16 +6,16 @@ import kotlinx.coroutines.flow.StateFlow
  * TODO.
  *
  */
-interface ReactiveNetwork {
+interface ReactiveNetwork<ID : Any> {
     /**
      * TODO.
      *
      */
-    fun write(message: OutboundMessage)
+    fun write(message: OutboundMessage<ID>)
 
     /**
      * TODO.
      *
      */
-    fun read(): StateFlow<Collection<InboundMessage>>
+    fun read(): StateFlow<Collection<InboundMessage<ID>>>
 }
