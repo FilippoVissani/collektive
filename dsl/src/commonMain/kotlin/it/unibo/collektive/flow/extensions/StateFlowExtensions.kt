@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.stateIn
 
 private class CombinedStateFlow<T>(
     private val getValue: () -> T,
-    private val flow: Flow<T>
+    private val flow: Flow<T>,
 ) : StateFlow<T> {
 
     override val replayCache: List<T> get() = listOf(value)
@@ -26,7 +26,7 @@ private class CombinedStateFlow<T>(
  */
 fun <T> combineStates(
     getValue: () -> T,
-    flow: Flow<T>
+    flow: Flow<T>,
 ): StateFlow<T> = CombinedStateFlow(getValue, flow)
 
 /**
@@ -34,10 +34,10 @@ fun <T> combineStates(
  */
 fun <T, R> mapStates(
     flow: StateFlow<T>,
-    transform: (T) -> R
+    transform: (T) -> R,
 ) = combineStates(
     getValue = { transform(flow.value) },
-    flow = flow.map { value -> transform(value) }
+    flow = flow.map { value -> transform(value) },
 )
 
 /**
@@ -46,8 +46,8 @@ fun <T, R> mapStates(
 fun <T1, T2, R> combineStates(
     stateFlow1: StateFlow<T1>,
     stateFlow2: StateFlow<T2>,
-    transform: (T1, T2) -> R
+    transform: (T1, T2) -> R,
 ): StateFlow<R> = combineStates(
     getValue = { transform(stateFlow1.value, stateFlow2.value) },
-    flow = combine(stateFlow1, stateFlow2) { value1, value2 -> transform(value1, value2) }
+    flow = combine(stateFlow1, stateFlow2) { value1, value2 -> transform(value1, value2) },
 )
