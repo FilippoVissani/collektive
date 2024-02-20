@@ -26,10 +26,9 @@ class Gradient {
 
     private fun Aggregate<Int>.gradient(source: Boolean): Double =
         share(Double.POSITIVE_INFINITY) { field ->
-            val distances = field + 1.0
             when {
                 source -> 0.0
-                else -> distances.min(Double.POSITIVE_INFINITY)
+                else -> (field + 1.0).min(Double.POSITIVE_INFINITY)
             }
         }
 
