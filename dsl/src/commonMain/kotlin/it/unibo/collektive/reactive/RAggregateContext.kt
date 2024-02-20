@@ -94,6 +94,19 @@ class RAggregateContext<ID : Any>(
         )
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
+    override fun <Initial> rRepeat(
+        initial: Initial,
+        transform: (StateFlow<Initial>) -> StateFlow<Initial>,
+    ): StateFlow<Initial> {
+        val currentPath = stack.currentPath()
+        return transform(rStateAt(currentPath, initial)).also { flow ->
+            flow.onEach { newValue ->
+                rState.update { it + (currentPath to newValue) }
+            }.launchIn(GlobalScope)
+        }
+    }
+
     private fun deleteOppositeBranch(condition: Boolean) {
         alignedOn(!condition) {
             val oppositePath = stack.currentPath()

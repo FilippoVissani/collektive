@@ -92,4 +92,14 @@ interface Aggregate<ID : Any> {
      * @return
      */
     fun <T> rExchange(initial: T, body: (StateFlow<Field<ID, T>>) -> StateFlow<Field<ID, T>>): StateFlow<Field<ID, T>>
+
+    /**
+     * TODO.
+     *
+     * @param Initial
+     * @param initial
+     * @param transform
+     * @return
+     */
+    fun <Initial> rRepeat(initial: Initial, transform: (StateFlow<Initial>) -> StateFlow<Initial>): StateFlow<Initial>
 }
