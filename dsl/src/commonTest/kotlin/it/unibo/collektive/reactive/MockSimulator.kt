@@ -43,7 +43,7 @@ suspend fun <ID : Any, R> runSimulation(
         simulation.forEach { (localDevice, _) ->
             simulation
                 .filter { (neighbor, _) -> neighbor.localId != localDevice.localId }
-                .forEach { (_, neighborChannel) ->
+                .forEach { (neighborResult, neighborChannel) ->
                     launch(Dispatchers.Default) {
                         localDevice.toSend.collect { outboundMessage ->
                             neighborChannel.update { neighborInboundMessages ->
@@ -55,7 +55,7 @@ suspend fun <ID : Any, R> runSimulation(
                                         mapOf(
                                             path to singleOutboundMessage
                                                 .overrides
-                                                .getOrElse(localDevice.localId) { singleOutboundMessage.default },
+                                                .getOrElse(neighborResult.localId) { singleOutboundMessage.default },
                                         ),
                                     )
                                 }
