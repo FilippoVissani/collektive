@@ -17,18 +17,25 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.test.Test
 
-class Gradient {
+class ReactiveGradient {
+
+    enum class NodeType {
+        SOURCE,
+        OBSTACLE,
+        DEFAULT,
+    }
 
     data class DeviceContext(
         val id: Int,
         val inboundMessages: MutableStateFlow<Iterable<InboundMessage<Int>>>,
     )
 
-    private fun Aggregate<Int>.gradient(source: Boolean): Double =
+    private fun Aggregate<Int>.gradient(nodeType: NodeType): Double =
         share(Double.POSITIVE_INFINITY) { field ->
-            when {
-                source -> 0.0
-                else -> (field + 1.0).min(Double.POSITIVE_INFINITY)
+            when (nodeType) {
+                NodeType.SOURCE -> 0.0
+                NodeType.OBSTACLE -> Double.POSITIVE_INFINITY
+                NodeType.DEFAULT -> (field + 1.0).min(Double.POSITIVE_INFINITY)
             }
         }
 
@@ -39,7 +46,13 @@ class Gradient {
         }
         val results = contexts.map {
             aggregate(it.id, it.inboundMessages) {
-                gradient(it.id == 0)
+                gradient(
+                    when {
+                        it.id == 0 -> NodeType.SOURCE
+                        it.id % 2 == 0 -> NodeType.OBSTACLE
+                        else -> NodeType.DEFAULT
+                    },
+                )
             }
         }
         val jobs = results.map { resultFlow ->
