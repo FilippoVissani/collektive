@@ -9,7 +9,6 @@ interface Environment {
         fun manhattanGrid(columns: Int, rows: Int): Environment {
             return grid(columns, rows) { column, row ->
                 listOf(
-                    Pair(column, row),
                     Pair(column + 1, row),
                     Pair(column - 1, row),
                     Pair(column, row + 1),
