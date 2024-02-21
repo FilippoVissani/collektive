@@ -111,6 +111,14 @@ internal class AggregateContext<ID : Any>(
         TODO("Not yet implemented")
     }
 
+    override fun <T> rMux(
+        condition: () -> StateFlow<Boolean>,
+        th: () -> StateFlow<T>,
+        el: () -> StateFlow<T>,
+    ): StateFlow<T> {
+        TODO("Not yet implemented")
+    }
+
     @Suppress("UNCHECKED_CAST")
     private fun <T> messagesAt(path: Path): Map<ID, T> = messages
         .mapNotNull { received ->

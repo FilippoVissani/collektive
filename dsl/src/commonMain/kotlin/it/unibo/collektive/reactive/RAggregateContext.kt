@@ -8,6 +8,7 @@ import it.unibo.collektive.networking.InboundMessage
 import it.unibo.collektive.networking.OutboundMessage
 import it.unibo.collektive.networking.SingleOutboundMessage
 import it.unibo.collektive.path.Path
+import it.unibo.collektive.reactive.flow.extensions.combineStates
 import it.unibo.collektive.reactive.flow.extensions.flattenConcat
 import it.unibo.collektive.reactive.flow.extensions.mapStates
 import it.unibo.collektive.state.State
@@ -30,7 +31,7 @@ import kotlinx.coroutines.flow.update
  */
 class RAggregateContext<ID : Any>(
     override val localId: ID,
-    private val rInboundMessages: MutableStateFlow<List<InboundMessage<ID>>> = MutableStateFlow(emptyList()),
+    private val rInboundMessages: StateFlow<Iterable<InboundMessage<ID>>> = MutableStateFlow(emptyList()),
 ) : Aggregate<ID> {
 
     private val stack = Stack()
@@ -94,6 +95,16 @@ class RAggregateContext<ID : Any>(
         )
     }
 
+    override fun <T> rMux(
+        condition: () -> StateFlow<Boolean>,
+        th: () -> StateFlow<T>,
+        el: () -> StateFlow<T>,
+    ): StateFlow<T> {
+        return combineStates(condition(), th(), el()) { c, t, e ->
+            if (c) t else e
+        }
+    }
+
     @OptIn(DelicateCoroutinesApi::class)
     override fun <Initial> rRepeat(
         initial: Initial,
@@ -155,11 +166,12 @@ class RAggregateContext<ID : Any>(
         TODO("Not yet implemented")
     }
 
+    @Suppress("UNCHECKED_CAST")
     override fun <Initial, Return> exchanging(
         initial: Initial,
         body: YieldingScope<Field<ID, Initial>, Field<ID, Return>>,
     ): Field<ID, Return> {
-        TODO("Not yet implemented")
+        return newField(0 as Return, emptyMap())
     }
 
     override fun <Initial> repeat(initial: Initial, transform: (Initial) -> Initial): Initial {

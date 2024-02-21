@@ -102,4 +102,15 @@ interface Aggregate<ID : Any> {
      * @return
      */
     fun <Initial> rRepeat(initial: Initial, transform: (StateFlow<Initial>) -> StateFlow<Initial>): StateFlow<Initial>
+
+    /**
+     * TODO.
+     *
+     * @param T
+     * @param condition
+     * @param th
+     * @param el
+     * @return
+     */
+    fun <T> rMux(condition: () -> StateFlow<Boolean>, th: () -> StateFlow<T>, el: () -> StateFlow<T>): StateFlow<T>
 }
