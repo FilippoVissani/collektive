@@ -10,7 +10,7 @@ class ProactiveSimulator {
     fun runSimulation() {
         val contexts = (0..<environment.devicesNumber)
         var results = contexts.map { deviceId ->
-            aggregate(deviceId) { aggregateProgram(deviceId) }
+            aggregate(deviceId) { gradientWithObstacles(getNodeType(deviceId)) }
         }
         (0..<100).map {
             results = results.map { aggregateResult ->
@@ -25,7 +25,7 @@ class ProactiveSimulator {
                         )
                     }
                 aggregate(aggregateResult.localId, neighborMessages, aggregateResult.newState) {
-                    aggregateProgram(aggregateResult.localId)
+                    gradientWithObstacles(getNodeType(aggregateResult.localId))
                 }
             }
             results.forEach {

@@ -25,7 +25,7 @@ class ReactiveSimulator {
         }
         val results = contexts.map {
             aggregate(it.id, it.inboundMessages) {
-                aggregateProgram(it.id)
+                gradientWithObstacles(getNodeType(it.id))
             }
         }
         val jobs = results.map { resultFlow ->
