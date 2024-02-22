@@ -21,7 +21,7 @@ class RRepeatTest : StringSpec({
     val init = 0
 
     val increase: (StateFlow<Int>) -> StateFlow<Int> = { flow ->
-        mapStates(flow) { it + 1 }
+        flow.mapStates { it + 1 }
     }
 
     "First time rExchange should return the initial value" {

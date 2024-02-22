@@ -59,7 +59,7 @@ class RAggregateContext<ID : Any>(
     ): StateFlow<Field<ID, T>> {
         val messages = rMessagesAt<T>(stack.currentPath())
         val previous = rStateAt(stack.currentPath(), initial)
-        val subject = mapStates(messages) { m -> newField(previous.value, m) }
+        val subject = messages.mapStates { m -> newField(previous.value, m) }
         val alignmentPath = stack.currentPath()
         return body(subject).also { flow ->
             flow.onEach { field ->
@@ -77,22 +77,20 @@ class RAggregateContext<ID : Any>(
     ): StateFlow<T> {
         val currentPath = stack.currentPath()
         val conditionResult = condition()
-        return flattenConcat(
-            mapStates(conditionResult) { newCondition ->
-                currentPath.tokens().forEach { stack.alignRaw(it) }
-                if (newCondition) {
-                    // Deletes false branch from messages and state
-                    deleteOppositeBranch(newCondition)
-                    alignedOn(newCondition) { th() }
-                } else {
-                    // Deletes true branch from messages and state
-                    deleteOppositeBranch(newCondition)
-                    alignedOn(newCondition) { el() }
-                }.also {
-                    currentPath.tokens().forEach { _ -> stack.dealign() }
-                }
-            },
-        )
+        return conditionResult.mapStates { newCondition ->
+            currentPath.tokens().forEach { stack.alignRaw(it) }
+            if (newCondition) {
+                // Deletes false branch from messages and state
+                deleteOppositeBranch(newCondition)
+                alignedOn(newCondition) { th() }
+            } else {
+                // Deletes true branch from messages and state
+                deleteOppositeBranch(newCondition)
+                alignedOn(newCondition) { el() }
+            }.also {
+                currentPath.tokens().forEach { _ -> stack.dealign() }
+            }
+        }.flattenConcat()
     }
 
     override fun <T> rMux(
@@ -149,13 +147,13 @@ class RAggregateContext<ID : Any>(
     private fun <T> newField(localValue: T, others: Map<ID, T>): Field<ID, T> = Field(localId, localValue, others)
 
     @Suppress("UNCHECKED_CAST")
-    private fun <T> rMessagesAt(path: Path): StateFlow<Map<ID, T>> = mapStates(rInboundMessages) { messages ->
+    private fun <T> rMessagesAt(path: Path): StateFlow<Map<ID, T>> = rInboundMessages.mapStates { messages ->
         messages
             .filter { it.messages.containsKey(path) }
             .associate { it.senderId to it.messages[path] as T }
     }
 
-    private fun <T> rStateAt(path: Path, default: T): StateFlow<T> = mapStates(rState) { state ->
+    private fun <T> rStateAt(path: Path, default: T): StateFlow<T> = rState.mapStates { state ->
         state.getTyped(path, default)
     }
 

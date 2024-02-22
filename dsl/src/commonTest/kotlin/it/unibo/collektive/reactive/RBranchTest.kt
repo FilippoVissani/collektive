@@ -28,13 +28,13 @@ class RBranchTest : StringSpec({
     val falseBranch = "falseBranch"
 
     val trueFunction: (StateFlow<Field<Int, String>>) -> StateFlow<Field<Int, String>> = { flow ->
-        mapStates(flow) { field ->
+        flow.mapStates { field ->
             field.mapWithId { _, _ -> "trueBranch" }
         }
     }
 
     val falseFunction: (StateFlow<Field<Int, String>>) -> StateFlow<Field<Int, String>> = { flow ->
-        mapStates(flow) { field ->
+        flow.mapStates { field ->
             field.mapWithId { _, _ -> "falseBranch" }
         }
     }

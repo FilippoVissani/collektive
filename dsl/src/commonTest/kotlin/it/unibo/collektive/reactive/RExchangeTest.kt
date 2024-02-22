@@ -33,19 +33,19 @@ class RExchangeTest : StringSpec({
     val expectedFalse = false
 
     val increaseOrDouble: (StateFlow<Field<Int, Int>>) -> StateFlow<Field<Int, Int>> = { flow ->
-        mapStates(flow) { field ->
+        flow.mapStates { field ->
             field.mapWithId { _, v -> if (v % 2 == 0) v + 1 else v * 2 }
         }
     }
 
     val alwaysTrue: (StateFlow<Field<Int, Boolean>>) -> StateFlow<Field<Int, Boolean>> = { flow ->
-        mapStates(flow) { field ->
+        flow.mapStates { field ->
             field.mapWithId { _, _ -> true }
         }
     }
 
     val alwaysFalse: (StateFlow<Field<Int, Boolean>>) -> StateFlow<Field<Int, Boolean>> = { flow ->
-        mapStates(flow) { field ->
+        flow.mapStates { field ->
             field.mapWithId { _, _ -> false }
         }
     }

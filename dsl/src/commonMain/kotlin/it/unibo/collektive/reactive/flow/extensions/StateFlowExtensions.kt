@@ -33,24 +33,13 @@ fun <T> combineStates(
 
 /**
  * TODO.
- */
-fun <T, R> mapStates(
-    flow: StateFlow<T>,
-    transform: (T) -> R,
-) = combineStates(
-    getValue = { transform(flow.value) },
-    flow = flow.map { value -> transform(value) },
-)
-
-/**
- * TODO.
  *
  * @param T
  * @param R
  * @param flow
  * @param transform
  */
-fun <T, R> StateFlow<T>.mapStates2(
+fun <T, R> StateFlow<T>.mapStates(
     transform: (T) -> R,
 ) = combineStates(
     getValue = { transform(this.value) },
@@ -96,23 +85,10 @@ fun <T1, T2, T3, R> combineStates(
  * TODO.
  *
  * @param T
- * @param stateFlow
  * @return
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-fun <T> flattenConcat(stateFlow: StateFlow<StateFlow<T>>): StateFlow<T> = combineStates(
-    getValue = { stateFlow.value.value },
-    flow = stateFlow.flattenConcat(),
-)
-
-/**
- * TODO.
- *
- * @param T
- * @return
- */
-@OptIn(ExperimentalCoroutinesApi::class)
-fun <T> StateFlow<StateFlow<T>>.flattenConcat2(): StateFlow<T> = combineStates(
+fun <T> StateFlow<StateFlow<T>>.flattenConcat(): StateFlow<T> = combineStates(
     getValue = { this.value.value },
     flow = this.flattenConcat(),
 )
