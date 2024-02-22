@@ -25,15 +25,7 @@ class Simulator {
         }
         val results = contexts.map {
             aggregate(it.id, it.inboundMessages) {
-                gradientWithObstacles(
-                    MutableStateFlow(
-                        when {
-                            it.id == 0 -> NodeType.SOURCE
-                            it.id % 4 == 0 -> NodeType.OBSTACLE
-                            else -> NodeType.DEFAULT
-                        },
-                    ),
-                )
+                gradientWithObstacles(sensors[it.id])
             }
         }
         val jobs = results.map { deviceResult ->

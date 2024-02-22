@@ -16,6 +16,14 @@ enum class NodeType {
 
 val environment = Environment.manhattanGrid(5, 5)
 
+val sensors = (0..<environment.devicesNumber).map {
+    when {
+        it == 0 -> MutableStateFlow(NodeType.SOURCE)
+        it % 4 == 0 -> MutableStateFlow(NodeType.OBSTACLE)
+        else -> MutableStateFlow(NodeType.DEFAULT)
+    }
+}
+
 fun Aggregate<Int>.gradient(sourceFlow: StateFlow<Boolean>): StateFlow<Double> =
     rShare(Double.POSITIVE_INFINITY) { fieldFlow ->
         rMux(
