@@ -76,17 +76,12 @@ class RAggregateContext<ID : Any>(
         el: () -> StateFlow<T>,
     ): StateFlow<T> {
         val currentPath = stack.currentPath()
-        val conditionResult = condition()
-        return conditionResult.mapStates { newCondition ->
+        return condition().mapStates { newCondition ->
             currentPath.tokens().forEach { stack.alignRaw(it) }
-            if (newCondition) {
-                // Deletes false branch from messages and state
-                deleteOppositeBranch(newCondition)
-                alignedOn(newCondition) { th() }
-            } else {
-                // Deletes true branch from messages and state
-                deleteOppositeBranch(newCondition)
-                alignedOn(newCondition) { el() }
+            val selectedBranch = if (newCondition) th else el
+            deleteOppositeBranch(newCondition)
+            alignedOn(newCondition) {
+                selectedBranch()
             }.also {
                 currentPath.tokens().forEach { _ -> stack.dealign() }
             }
