@@ -1,14 +1,19 @@
 package it.unibo.collektive.reactive.flow.extensions
 
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flattenConcat
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 
 private class CombinedStateFlow<T>(
     private val getValue: () -> T,
@@ -87,8 +92,13 @@ fun <T1, T2, T3, R> combineStates(
  * @param T
  * @return
  */
-@OptIn(ExperimentalCoroutinesApi::class)
-fun <T> StateFlow<StateFlow<T>>.flattenConcat(): StateFlow<T> = combineStates(
-    getValue = { this.value.value },
-    flow = this.flattenConcat(),
-)
+@OptIn(DelicateCoroutinesApi::class)
+fun <T> StateFlow<StateFlow<T>>.flattenConcat(): StateFlow<T> {
+    val result = MutableStateFlow(value.value)
+    this.onEach { innerFlow ->
+        innerFlow.onEach { value ->
+            result.update { value }
+        }.launchIn(GlobalScope)
+    }.launchIn(GlobalScope)
+    return result
+}
