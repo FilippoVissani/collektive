@@ -93,8 +93,12 @@ class RAggregateContext<ID : Any>(
         th: () -> StateFlow<T>,
         el: () -> StateFlow<T>,
     ): StateFlow<T> {
+        val currentPath = stack.currentPath()
         return combineStates(condition(), th(), el()) { c, t, e ->
-            if (c) t else e
+            currentPath.tokens().forEach { stack.alignRaw(it) }
+            (if (c) t else e).also {
+                currentPath.tokens().forEach { _ -> stack.dealign() }
+            }
         }
     }
 
