@@ -14,7 +14,7 @@ class MockReactiveNetworkManager {
         messageBufferFlow.update { it + message }
     }
 
-    fun receive(receiverId: Int): StateFlow<Collection<InboundMessage<Int>>> = mapStates(messageBufferFlow) {
+    fun receive(receiverId: Int): StateFlow<Collection<InboundMessage<Int>>> = messageBufferFlow.mapStates {
             messageBuffer ->
         messageBuffer.filterNot { it.senderId == receiverId }
             .map { received ->

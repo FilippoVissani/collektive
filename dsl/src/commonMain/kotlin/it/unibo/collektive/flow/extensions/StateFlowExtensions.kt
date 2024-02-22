@@ -32,12 +32,11 @@ fun <T> combineStates(
 /**
  * TODO.
  */
-fun <T, R> mapStates(
-    flow: StateFlow<T>,
+fun <T, R> StateFlow<T>.mapStates(
     transform: (T) -> R,
 ) = combineStates(
-    getValue = { transform(flow.value) },
-    flow = flow.map { value -> transform(value) },
+    getValue = { transform(this.value) },
+    flow = this.map { value -> transform(value) },
 )
 
 /**
