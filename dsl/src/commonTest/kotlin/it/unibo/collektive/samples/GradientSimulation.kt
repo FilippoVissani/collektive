@@ -4,6 +4,7 @@ import it.unibo.collektive.aggregate.api.Aggregate
 import it.unibo.collektive.aggregate.api.operators.share
 import it.unibo.collektive.field.min
 import it.unibo.collektive.field.plus
+import kotlinx.coroutines.flow.MutableStateFlow
 
 enum class NodeType {
     SOURCE,
@@ -17,6 +18,16 @@ fun getNodeType(id: Int) = when {
     id == 0 -> NodeType.SOURCE
     id % 4 == 0 -> NodeType.OBSTACLE
     else -> NodeType.DEFAULT
+}
+
+val reactiveSensors = (0..<environment.devicesNumber).map {
+    MutableStateFlow(
+        when {
+            it == 0 -> NodeType.SOURCE
+            it % 4 == 0 -> NodeType.OBSTACLE
+            else -> NodeType.DEFAULT
+        },
+    )
 }
 
 fun Aggregate<Int>.gradient(source: Boolean): Double =
