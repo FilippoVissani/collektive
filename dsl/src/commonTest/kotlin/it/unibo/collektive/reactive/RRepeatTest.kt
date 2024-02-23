@@ -24,7 +24,7 @@ class RRepeatTest : StringSpec({
         flow.mapStates { it + 1 }
     }
 
-    "First time rExchange should return the initial value" {
+    "rRepeat should execute the given functions multiple times" {
         runBlocking {
             val aggregateResult = aggregate(id0) {
                 rRepeat(init, increase)
