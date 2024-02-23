@@ -1,6 +1,7 @@
 package it.unibo.collektive.aggregate.api
 
 import it.unibo.collektive.field.Field
+import kotlinx.coroutines.flow.StateFlow
 
 typealias YieldingScope<Initial, Return> = YieldingContext<Initial, Return>.(Initial) -> YieldingResult<Initial, Return>
 
@@ -69,4 +70,47 @@ interface Aggregate<ID : Any> {
      * Returns the body's return element.
      */
     fun <R> alignedOn(pivot: Any?, body: () -> R): R
+
+    // Reactive version of aggregate functions
+    /**
+     * TODO.
+     *
+     * @param T
+     * @param condition
+     * @param th
+     * @param el
+     * @return
+     */
+    fun <T> rBranch(condition: () -> StateFlow<Boolean>, th: () -> StateFlow<T>, el: () -> StateFlow<T>): StateFlow<T>
+
+    /**
+     * TODO.
+     *
+     * @param T
+     * @param initial
+     * @param body
+     * @return
+     */
+    fun <T> rExchange(initial: T, body: (StateFlow<Field<ID, T>>) -> StateFlow<Field<ID, T>>): StateFlow<Field<ID, T>>
+
+    /**
+     * TODO.
+     *
+     * @param Initial
+     * @param initial
+     * @param transform
+     * @return
+     */
+    fun <Initial> rRepeat(initial: Initial, transform: (StateFlow<Initial>) -> StateFlow<Initial>): StateFlow<Initial>
+
+    /**
+     * TODO.
+     *
+     * @param T
+     * @param condition
+     * @param th
+     * @param el
+     * @return
+     */
+    fun <T> rMux(condition: () -> StateFlow<Boolean>, th: () -> StateFlow<T>, el: () -> StateFlow<T>): StateFlow<T>
 }
