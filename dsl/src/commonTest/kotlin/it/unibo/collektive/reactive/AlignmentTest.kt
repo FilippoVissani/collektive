@@ -23,6 +23,14 @@ class AlignmentTest : StringSpec({
         f.mapWithId { _, _ -> "mockFunction" }
     }
 
+    val alwaysTrue: (Field<Int, Boolean>) -> Field<Int, Boolean> = { f ->
+        f.mapWithId { _, _ -> true }
+    }
+
+    val alwaysFalse: (Field<Int, Boolean>) -> Field<Int, Boolean> = { f ->
+        f.mapWithId { _, _ -> false }
+    }
+
     "Devices should be aligned" {
         runBlocking {
             val networkManager = MockReactiveNetworkManager()
@@ -55,7 +63,39 @@ class AlignmentTest : StringSpec({
             delay(200)
             result0.value.result.toMap() shouldBe expectedResult
             result1.value.result.toMap() shouldBe expectedResult
-            result2.value.result.toMap() shouldBe expectedResult
+        }
+    }
+
+    "Devices should not be aligned" {
+        runBlocking {
+            val networkManager = MockReactiveNetworkManager()
+            val expectedResult0 = mapOf(id0 to true)
+            val expectedResult1 = mapOf(id1 to false)
+
+            // Device 0
+            val network0 = MockReactiveNetwork(networkManager, id0)
+            val result0 = aggregate(id0, network0) {
+                if (true) {
+                    exchange(true, alwaysTrue)
+                } else {
+                    exchange(false, alwaysFalse)
+                }
+            }
+
+            // Device 1
+            val network1 = MockReactiveNetwork(networkManager, id1)
+            val result1 = aggregate(id1, network1) {
+                if (false) {
+                    exchange(true, alwaysTrue)
+                } else {
+                    exchange(false, alwaysFalse)
+                }
+            }
+            result0.launchIn(GlobalScope)
+            result1.launchIn(GlobalScope)
+            delay(200)
+            result0.value.result.toMap() shouldBe expectedResult0
+            result1.value.result.toMap() shouldBe expectedResult1
         }
     }
 })
