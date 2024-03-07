@@ -20,9 +20,7 @@ class MockReactiveNetworkManager {
             .map { received ->
                 InboundMessage(
                     received.senderId,
-                    received.messages.mapValues { (_, single) ->
-                        single.overrides.getOrElse(receiverId) { single.default }
-                    },
+                    received.messagesFor(receiverId),
                 )
             }
     }

@@ -19,12 +19,10 @@ class ProactiveSimulator {
                     .map { neighborResult ->
                         InboundMessage(
                             neighborResult.localId,
-                            neighborResult.toSend.messages.mapValues { (_, single) ->
-                                single.overrides.getOrElse(aggregateResult.localId) { single.default }
-                            },
+                            neighborResult.toSend.messagesFor(aggregateResult.localId),
                         )
                     }
-                aggregate(aggregateResult.localId, neighborMessages, aggregateResult.newState) {
+                aggregate(aggregateResult.localId, aggregateResult.newState, neighborMessages) {
                     gradientWithObstacles(getNodeType(aggregateResult.localId))
                 }
             }

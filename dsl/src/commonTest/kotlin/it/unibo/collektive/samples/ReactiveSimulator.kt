@@ -29,7 +29,7 @@ class ReactiveSimulator {
         }
         val results = contexts.map { deviceContext ->
             combineStates(deviceContext.inboundMessages, deviceContext.sensor) { inboundValue, sensorValue ->
-                aggregate(deviceContext.id, inboundValue, deviceContext.previousState.value) {
+                aggregate(deviceContext.id, deviceContext.previousState.value, inboundValue) {
                     gradientWithObstacles(sensorValue)
                 }.also { aggregateResult ->
                     deviceContext.previousState.update { aggregateResult.newState }
@@ -48,9 +48,7 @@ class ReactiveSimulator {
                                     inboundMessages
                                         .filterNot { it.senderId == result.localId } + InboundMessage(
                                         result.localId,
-                                        result.toSend.messages.mapValues { (_, single) ->
-                                            single.overrides.getOrElse(neighborId) { single.default }
-                                        },
+                                        result.toSend.messagesFor(neighborId),
                                     )
                                 }
                         }
