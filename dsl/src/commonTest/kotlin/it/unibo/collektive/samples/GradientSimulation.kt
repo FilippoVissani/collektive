@@ -39,8 +39,7 @@ fun Aggregate<Int>.gradient(source: Boolean): Double =
     }
 
 fun Aggregate<Int>.gradientWithObstacles(nodeType: NodeType): Double =
-    if (nodeType == NodeType.OBSTACLE) {
-        -1.0
-    } else {
-        gradient(nodeType == NodeType.SOURCE)
+    when {
+        nodeType == NodeType.OBSTACLE -> -1.0
+        else -> gradient(nodeType == NodeType.SOURCE)
     }
