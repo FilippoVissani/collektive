@@ -3,9 +3,14 @@ package it.unibo.collektive
 import it.unibo.collektive.aggregate.AggregateResult
 import it.unibo.collektive.aggregate.api.Aggregate
 import it.unibo.collektive.aggregate.api.impl.AggregateContext
+import it.unibo.collektive.flow.extensions.mapStates
 import it.unibo.collektive.networking.InboundMessage
 import it.unibo.collektive.networking.Network
+import it.unibo.collektive.networking.ReactiveNetwork
 import it.unibo.collektive.state.State
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 
 /**
  * Create a Collektive device with a specific [localId] and a [network] to manage incoming and outgoing messages,
@@ -76,6 +81,50 @@ class Collektive<ID : Any, R>(
             AggregateResult(localId, compute(), messagesToSend(), newState()).also {
                 network.write(it.toSend)
             }
+        }
+
+        /**
+         * TODO.
+         */
+        fun <ID : Any, R> aggregate(
+            localId: ID,
+            inbound: StateFlow<Iterable<InboundMessage<ID>>>,
+            compute: Aggregate<ID>.() -> R,
+        ): StateFlow<AggregateResult<ID, R>> {
+            val states = MutableStateFlow<State>(emptyMap())
+            val contextFlow = inbound.mapStates {
+                AggregateContext(localId, it, states.value)
+            }
+            return contextFlow.mapStates { aggregateContext ->
+                aggregateContext.run {
+                    AggregateResult(localId, compute(), messagesToSend(), newState()).also {
+                        states.update { this.newState() }
+                    }
+                }
+            }
+        }
+
+        /**
+         * TODO.
+         */
+        fun <ID : Any, R> aggregate(
+            localId: ID,
+            network: ReactiveNetwork<ID>,
+            compute: Aggregate<ID>.() -> R,
+        ): StateFlow<AggregateResult<ID, R>> {
+            val states = MutableStateFlow<State>(emptyMap())
+            val contextFlow = network.read().mapStates {
+                AggregateContext(localId, it, states.value)
+            }
+            val result: StateFlow<AggregateResult<ID, R>> = contextFlow.mapStates { aggregateContext ->
+                aggregateContext.run {
+                    val aggregateResult = AggregateResult(localId, compute(), messagesToSend(), newState())
+                    states.update { aggregateResult.newState }
+                    network.write(aggregateResult.toSend)
+                    aggregateResult
+                }
+            }
+            return result
         }
     }
 }
